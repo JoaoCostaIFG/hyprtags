@@ -8,9 +8,9 @@
 
 #include <unistd.h>
 #include <vector>
-#include <unordered_set>
-#include <map>
+#include <unordered_map>
 #include <format>
+#include <string>
 
 #include <hyprland/src/includes.hpp>
 #include <any>
@@ -34,7 +34,7 @@
 static const char* SUPERSCRIPT_DIGITS[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
 // Each monitor has a set of active tags: monitorID -> listOfTags
-static std::map<size_t, TagsMonitor> g_tagsMonitors;
+static std::unordered_map<size_t, TagsMonitor> g_tagsMonitors;
 
 // Do NOT change this function.
 APICALL EXPORT std::string PLUGIN_API_VERSION() {
@@ -59,59 +59,78 @@ static const std::string getWorkspaceName(CMonitor* monitor, const std::string& 
 void tagsWorkspace(const std::string& workspace) {
     Debug::log(LOG, HYPRTAGS ": tags-workspace {}", workspace);
 
-    CMonitor* monitor = GET_CURRENT_MONITOR();
+    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
+    if (!TagsMonitor::isValidTag(workspaceIdx)) {
+        Debug::log(ERR, HYPRTAGS ": tags-workspace {} is invalid", workspace);
+        return;
+    }
 
-    int       workspaceIdx = std::stoi(workspace);
-    auto&     tags         = g_tagsMonitors[monitor->ID].tags;
-    if (tags.size() == 1 && tags.contains(workspaceIdx)) {
+    CMonitor* monitor     = GET_CURRENT_MONITOR();
+    auto&     tagsMonitor = g_tagsMonitors[monitor->ID];
+    if (tagsMonitor.isOnlyTag(workspaceIdx)) {
         // if we're selecting the current tag, do nothing
         return;
     }
 
-    // we're selecting a new tag, update history
-    g_tagsMonitors[monitor->ID].hist = tags;
-    g_tagsMonitors[monitor->ID].tags.clear();
-    g_tagsMonitors[monitor->ID].tags.insert(workspaceIdx);
-
+    tagsMonitor.gotoTag(workspaceIdx);
     std::string workspaceName = getWorkspaceName(monitor, workspace);
-
     HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:" + workspaceName);
 }
 
 void tagsWorkspacealttab(const std::string& ignored) {
     Debug::log(LOG, HYPRTAGS ": tags-workspacealttab");
 
-    CMonitor* monitor = GET_CURRENT_MONITOR();
+    CMonitor* monitor     = GET_CURRENT_MONITOR();
+    auto&     tagsMonitor = g_tagsMonitors[monitor->ID];
 
-    // switch history
-    // auto prevTags = g_monitorTagsHist[monitor->ID];
-    // g_monitorTagsHist[monitor->ID] = g_monitorTags[monitor->ID];
-    // g_monitorTags[monitor->ID] = prevTags;
+    // tagsMonitor.swapHist();
 
-    tagsWorkspace(std::to_string(*g_tagsMonitors[monitor->ID].hist.begin()));
+    uint16_t tags = tagsMonitor.getHist();
+    for (uint16_t tag = 1; tags > 0; ++tag, tags >>= 1) {
+        // TODO: for now we're only getting the first active tag
+        if (tags & 1) {
+            tagsWorkspace(std::to_string(tag));
+            return;
+        }
+    }
+
+    // should be unreachable
+    Debug::log(WARN, HYPRTAGS ": tags-workspacealttab found no active tags");
 }
 
 void tagsMovetoworkspacesilent(const std::string& workspace) {
     Debug::log(LOG, HYPRTAGS ": tags-movetoworkspacesilent {}", workspace);
 
+    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
+    if (!TagsMonitor::isValidTag(workspaceIdx)) {
+        Debug::log(ERR, HYPRTAGS ": tags-movetoworkspacesilent {} is invalid", workspace);
+        return;
+    }
+
     CMonitor*   monitor       = GET_CURRENT_MONITOR();
     std::string workspaceName = getWorkspaceName(monitor, workspace);
-
     HyprlandAPI::invokeHyprctlCommand("dispatch", "movetoworkspacesilent name:" + workspaceName);
 }
 
 void tagsMovetoworkspace(const std::string& workspace) {
     Debug::log(LOG, HYPRTAGS ": tags-movetoworkspace {}", workspace);
+
+    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
+    if (!TagsMonitor::isValidTag(workspaceIdx)) {
+        Debug::log(ERR, HYPRTAGS ": tags-movetoworkspace {} is invalid", workspace);
+        return;
+    }
+
     tagsMovetoworkspacesilent(workspace);
     tagsWorkspace(workspace);
 }
 
 /**
  * @brief Notification for user-triggered workspace changes that did not go through the plugin.
- * 
+ *
  * @param workspace The workspace that changed
  */
-void onWorkspace(CWorkspace* workspace) {
+void onWorkspace(std::shared_ptr<CWorkspace> workspace) {
     Debug::log(LOG, HYPRTAGS ": onWorkspace {}", workspace->m_szName);
 
     // if the workspace is special, do nothing (we don't manage special workspaces)
@@ -119,12 +138,14 @@ void onWorkspace(CWorkspace* workspace) {
         return;
     }
 
-    CMonitor* monitor = GET_CURRENT_MONITOR();
+    auto&    tagsMonitor  = g_tagsMonitors[workspace->m_iMonitorID];
+    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace->m_szName);
+    // if the workspace is the current one, it means we were the ones that triggered the change, so do nothing
+    if (tagsMonitor.isOnlyTag(workspaceIdx)) {
+        return;
+    }
 
-    // update history
-    g_tagsMonitors[monitor->ID].hist = g_tagsMonitors[monitor->ID].tags;
-    g_tagsMonitors[monitor->ID].tags.clear();
-    g_tagsMonitors[monitor->ID].tags.insert(std::stoi(workspace->m_szName));
+    tagsMonitor.gotoTag(workspaceIdx);
 }
 
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
@@ -143,16 +164,17 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addDispatcher(PHANDLE, "tags-movetoworkspacesilent", tagsMovetoworkspacesilent);
     HyprlandAPI::addDispatcher(PHANDLE, "tags-movetoworkspace", tagsMovetoworkspace);
 
-    // HyprlandAPI::registerCallbackDynamic(PHANDLE, "workspace", [&](void* self, SCallbackInfo& info, std::any data) { onWorkspace(std::any_cast<CWorkspace*>(data)); });
+    HyprlandAPI::registerCallbackDynamic(PHANDLE, "workspace",
+                                         [&](void* self, SCallbackInfo& info, std::any data) { onWorkspace(std::any_cast<std::shared_ptr<CWorkspace>>(data)); });
 
     // At the start only the first tag is active
     for (auto& monitor : g_pCompositor->m_vMonitors) {
-        g_tagsMonitors[monitor->ID].tags.insert(1);
-        g_tagsMonitors[monitor->ID].hist.insert(1);
+        TagsMonitor tagsMonitor;
+        g_tagsMonitors[monitor->ID] = tagsMonitor;
 
         std::string workspaceName = getWorkspaceName(monitor.get(), "1");
         HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("workspace name:{}", workspaceName));
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("moveworkspacetomonitor name:{} {}", workspaceName, std::to_string(monitor->ID)));
+        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("moveworkspacetomonitor name:{} {}", workspaceName, monitor->ID));
     }
 
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CColor{0.2, 1.0, 0.2, 1.0}, 5000);
