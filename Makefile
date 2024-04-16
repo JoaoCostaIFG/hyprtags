@@ -1,5 +1,10 @@
-all:
-	$(CXX) -shared -fPIC --no-gnu-unique main.cpp -o hyprtags.so -g `pkg-config --cflags pixman-1 libdrm hyprland` -std=c++2b -O2
+NAME=hyprtags
+
+SRC=$(wildcard src/*.cpp)
+INC=$(wildcard include/*.hpp)
+
+$(NAME).so: $(SRC) $(INC)
+	$(CXX) -shared -fPIC --no-gnu-unique $(SRC) -o $(NAME).so -g `pkg-config --cflags pixman-1 libdrm hyprland` -std=c++2b -O2 -Iinclude
 
 clean:
-	rm ./hyprtags.so
+	rm ./$(NAME).so
