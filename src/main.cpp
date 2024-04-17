@@ -3,6 +3,8 @@
 // Can maybe solve by moving the workspaces to a new monitor when the monitors change.
 //
 // TODO also need to take care of merging workspaces when monitors disappear
+//
+// TODO Use this to get focus: g_pCompositor->m_pLastWindow
 
 #define WLR_USE_UNSTABLE
 
@@ -54,6 +56,23 @@ static const std::string getWorkspaceName(CMonitor* monitor, const std::string& 
         return workspace + monitorExp;
     }
     return workspace;
+}
+
+static std::vector<CWindow*> getWindowsOnWorkspace(const std::string& workspaceName) {
+    std::vector<CWindow*> windows;
+
+    PHLWORKSPACE          pWorkspace = g_pCompositor->getWorkspaceByName(workspaceName);
+    if (pWorkspace == nullptr) {
+        return windows;
+    }
+
+    for (auto& w : g_pCompositor->m_vWindows) {
+        if (w->workspaceID() == pWorkspace->m_iID && w->m_bIsMapped) {
+            windows.push_back(w.get());
+        }
+    }
+
+    return windows;
 }
 
 void tagsWorkspace(const std::string& workspace) {
@@ -125,6 +144,31 @@ void tagsMovetoworkspace(const std::string& workspace) {
     tagsWorkspace(workspace);
 }
 
+void tagsToggleworkspace(const std::string& workspace) {
+    Debug::log(LOG, HYPRTAGS ": tags-toggleworkspace {}", workspace);
+
+    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
+    if (!TagsMonitor::isValidTag(workspaceIdx)) {
+        Debug::log(ERR, HYPRTAGS ": tags-workspace {} is invalid", workspace);
+        return;
+    }
+
+    CMonitor* monitor     = GET_CURRENT_MONITOR();
+    auto&     tagsMonitor = g_tagsMonitors[monitor->ID];
+    if (tagsMonitor.isOnlyTag(workspaceIdx)) {
+        // if we're selecting the current tag, do nothing
+        return;
+    }
+
+    PHLWORKSPACE currentWorkspace = g_pCompositor->m_pLastWindow->m_pWorkspace;
+
+    std::string  workspaceName = getWorkspaceName(monitor, workspace);
+    auto         windows       = getWindowsOnWorkspace(workspaceName);
+    for (auto& w : windows) {
+        g_pCompositor->moveWindowToWorkspaceSafe(w, currentWorkspace);
+    }
+}
+
 /**
  * @brief Notification for user-triggered workspace changes that did not go through the plugin.
  *
@@ -163,6 +207,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addDispatcher(PHANDLE, "tags-workspacealttab", tagsWorkspacealttab);
     HyprlandAPI::addDispatcher(PHANDLE, "tags-movetoworkspacesilent", tagsMovetoworkspacesilent);
     HyprlandAPI::addDispatcher(PHANDLE, "tags-movetoworkspace", tagsMovetoworkspace);
+    HyprlandAPI::addDispatcher(PHANDLE, "tags-toggleworkspace", tagsToggleworkspace);
 
     HyprlandAPI::registerCallbackDynamic(PHANDLE, "workspace",
                                          [&](void* self, SCallbackInfo& info, std::any data) { onWorkspace(std::any_cast<std::shared_ptr<CWorkspace>>(data)); });
@@ -176,6 +221,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("workspace name:{}", workspaceName));
         HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("moveworkspacetomonitor name:{} {}", workspaceName, monitor->ID));
     }
+    // focus main screen
+    HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:1");
 
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CColor{0.2, 1.0, 0.2, 1.0}, 5000);
     return {HYPRTAGS, "Hyprland version of DWM's tag system", "JoaoCostaIFG", "1.0"};
