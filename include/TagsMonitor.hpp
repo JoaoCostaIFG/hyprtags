@@ -2,6 +2,10 @@
 #define HYPRTAGS_TAGSMONITOR_H
 
 #include <cstdint>
+#include <unordered_map>
+#include <vector>
+
+#include "utils.hpp"
 
 class TagsMonitor {
   public:
@@ -23,11 +27,7 @@ class TagsMonitor {
 
     void gotoTag(uint16_t tag);
 
-    /* Returns true if the tag was activated, false otherwise (was already activate) */
-    bool activateTag(uint16_t tag);
-
-    /* Returns true if the tag was deactivated, false otherwise (was not activate) */
-    bool deactivateTag(uint16_t tag);
+    bool toogleTag(uint16_t tag, std::vector<CWindow*> borrowedWindows);
 
     /* Returns true if the tag is the only tag active (current, no borrows) */
     bool        isOnlyTag(uint16_t tag) const;
@@ -37,6 +37,14 @@ class TagsMonitor {
   private:
     uint16_t tags;
     uint16_t hist;
+    // tag -> vector of WINDOWS
+    std::unordered_map<uint16_t, std::vector<CWindow*>> borrowedTags;
+
+    /* Returns true if the tag was activated, false otherwise (was already activate) */
+    bool activateTag(uint16_t tag, std::vector<CWindow*> borrowedWindows);
+
+    /* Returns true if the tag was deactivated, false otherwise (was not activate) */
+    bool deactivateTag(uint16_t tag);
 };
 
 #endif //HYPRTAGS_TAGSMONITOR_H

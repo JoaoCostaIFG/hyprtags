@@ -6,6 +6,7 @@
 //
 // TODO Use this to get focus: g_pCompositor->m_pLastWindow
 
+#include <hyprland/src/desktop/DesktopTypes.hpp>
 #define WLR_USE_UNSTABLE
 
 #include <unistd.h>
@@ -27,13 +28,8 @@
 #undef private
 
 #include "../include/globals.hpp"
+#include "../include/utils.hpp"
 #include "../include/TagsMonitor.hpp"
-
-#define HYPRTAGS "[hyprtags]"
-
-#define GET_CURRENT_MONITOR() g_pCompositor->getMonitorFromCursor()
-
-static const char* SUPERSCRIPT_DIGITS[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
 
 // Each monitor has a set of active tags: monitorID -> listOfTags
 static std::unordered_map<size_t, TagsMonitor> g_tagsMonitors;
@@ -41,38 +37,6 @@ static std::unordered_map<size_t, TagsMonitor> g_tagsMonitors;
 // Do NOT change this function.
 APICALL EXPORT std::string PLUGIN_API_VERSION() {
     return HYPRLAND_API_VERSION;
-}
-
-// g_pCompositor->getWindowsOnWorkspace
-// g_pCompositor->moveWindowToWorkspaceSafe
-
-static const std::string getWorkspaceName(CMonitor* monitor, const std::string& workspace) {
-    if (monitor->ID > 0) {
-        const std::string monitorIdStr = std::to_string(monitor->ID + 1);
-        std::string       monitorExp   = "";
-        for (int i = 0; i < workspace.length(); ++i) {
-            monitorExp += SUPERSCRIPT_DIGITS[monitorIdStr[i] - '0'];
-        }
-        return workspace + monitorExp;
-    }
-    return workspace;
-}
-
-static std::vector<CWindow*> getWindowsOnWorkspace(const std::string& workspaceName) {
-    std::vector<CWindow*> windows;
-
-    PHLWORKSPACE          pWorkspace = g_pCompositor->getWorkspaceByName(workspaceName);
-    if (pWorkspace == nullptr) {
-        return windows;
-    }
-
-    for (auto& w : g_pCompositor->m_vWindows) {
-        if (w->workspaceID() == pWorkspace->m_iID && w->m_bIsMapped) {
-            windows.push_back(w.get());
-        }
-    }
-
-    return windows;
 }
 
 void tagsWorkspace(const std::string& workspace) {
@@ -157,16 +121,15 @@ void tagsToggleworkspace(const std::string& workspace) {
     auto&     tagsMonitor = g_tagsMonitors[monitor->ID];
     if (tagsMonitor.isOnlyTag(workspaceIdx)) {
         // if we're selecting the current tag, do nothing
+        Debug::log(WARN, HYPRTAGS ": tags-workspace {} is only tag. Do nothing.", workspace);
         return;
     }
 
-    PHLWORKSPACE currentWorkspace = g_pCompositor->m_pLastWindow->m_pWorkspace;
+    std::string  borrowedWorkspaceName = getWorkspaceName(monitor, workspace);
+    PHLWORKSPACE borrowedWorkspace     = g_pCompositor->getWorkspaceByName(borrowedWorkspaceName);
+    auto         borrowedWindows               = getWindowsOnWorkspace(borrowedWorkspace);
 
-    std::string  workspaceName = getWorkspaceName(monitor, workspace);
-    auto         windows       = getWindowsOnWorkspace(workspaceName);
-    for (auto& w : windows) {
-        g_pCompositor->moveWindowToWorkspaceSafe(w, currentWorkspace);
-    }
+    tagsMonitor.toogleTag(workspaceIdx, borrowedWindows);
 }
 
 /**
