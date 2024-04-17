@@ -1,0 +1,13 @@
+[repository]
+name = "hyprtags"
+authors = ["JoaoCostaIFG"]
+commit_pins = [
+]
+
+[hyprtags]
+description = "Hyprland version of DWM's tag system."
+authors = ["JoaoCostaIFG"]
+output = "hyprtags.so"
+build = [
+    "make"
+]

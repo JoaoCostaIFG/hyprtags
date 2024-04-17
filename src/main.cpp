@@ -109,14 +109,14 @@ void onWorkspace(std::shared_ptr<CWorkspace> workspace) {
         return;
     }
 
-    auto&    tagsMonitor  = g_tagsMonitors[workspace->m_iMonitorID];
+    auto tagMon = GET_CURRENT_TAGMONITOR();
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace->m_szName);
     // if the workspace is the current one, it means we were the ones that triggered the change, so do nothing
-    if (tagsMonitor->isOnlyTag(workspaceIdx)) {
+    if (tagMon->isOnlyTag(workspaceIdx)) {
         return;
     }
 
-    tagsMonitor->gotoTag(workspaceIdx);
+    tagMon->gotoTag(workspaceIdx);
 }
 
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
