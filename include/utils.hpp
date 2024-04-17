@@ -1,7 +1,7 @@
 #ifndef HYPRTAGS_UTILS_H
 #define HYPRTAGS_UTILS_H
 
-#include <vector>
+#include <unordered_set>
 
 #define WLR_USE_UNSTABLE
 
@@ -21,6 +21,6 @@
 
 std::string getWorkspaceName(CMonitor* monitor, const std::string& workspace);
 
-std::vector<CWindow*> getWindowsOnWorkspace(PHLWORKSPACE pWorkspace);
+std::unordered_set<CWindow*> getWindowsOnWorkspace(const std::string& workspaceName);
 
 #endif //HYPRTAGS_UTILS_H

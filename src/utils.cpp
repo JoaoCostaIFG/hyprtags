@@ -16,16 +16,17 @@ std::string        getWorkspaceName(CMonitor* monitor, const std::string& worksp
     return workspace;
 }
 
-std::vector<CWindow*> getWindowsOnWorkspace(PHLWORKSPACE pWorkspace) {
-    std::vector<CWindow*> windows;
+std::unordered_set<CWindow*> getWindowsOnWorkspace(const std::string& workspaceName) {
+    std::unordered_set<CWindow*> windows;
 
+    PHLWORKSPACE                 pWorkspace = g_pCompositor->getWorkspaceByName(workspaceName);
     if (pWorkspace == nullptr) {
         return windows;
     }
 
     for (auto& w : g_pCompositor->m_vWindows) {
         if (w->workspaceID() == pWorkspace->m_iID && w->m_bIsMapped) {
-            windows.push_back(w.get());
+            windows.insert(w.get());
         }
     }
 
