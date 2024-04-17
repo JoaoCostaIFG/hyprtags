@@ -24,7 +24,6 @@
 #include <hyprland/src/desktop/Workspace.hpp>
 #include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/helpers/Monitor.hpp>
-#include <hyprland/src/plugins/PluginAPI.hpp>
 #undef private
 
 #include "../include/globals.hpp"
@@ -127,7 +126,7 @@ void tagsToggleworkspace(const std::string& workspace) {
 
     std::string  borrowedWorkspaceName = getWorkspaceName(monitor, workspace);
     PHLWORKSPACE borrowedWorkspace     = g_pCompositor->getWorkspaceByName(borrowedWorkspaceName);
-    auto         borrowedWindows               = getWindowsOnWorkspace(borrowedWorkspace);
+    auto         borrowedWindows       = getWindowsOnWorkspace(borrowedWorkspace);
 
     tagsMonitor.toogleTag(workspaceIdx, borrowedWindows);
 }

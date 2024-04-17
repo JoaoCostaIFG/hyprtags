@@ -11,6 +11,7 @@
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/helpers/Monitor.hpp>
 #include <hyprland/src/desktop/Window.hpp>
+#include <hyprland/src/plugins/PluginAPI.hpp>
 #undef private
 
 #define HYPRTAGS "[hyprtags]"
