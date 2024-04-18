@@ -9,8 +9,6 @@
 // TODO deal with moving windows between monitors:
 //     - maybe this could be a handler that checked for window movements and handled them
 //     all there.
-//
-//  TODO - can't move windows out of special workspaces
 
 #include <hyprland/src/desktop/DesktopTypes.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
