@@ -22,17 +22,15 @@ TagsMonitor::TagsMonitor(uint64_t monitorId) : tags(1), hist(1) {
 }
 
 void TagsMonitor::setMonitorIdentifier(uint64_t monitorId) {
+    this->identifier = "";
+    this->monitorId  = monitorId;
+
     if (monitorId > 0) {
         const std::string monitorIdStr = std::to_string(monitorId + 1);
-        std::string       monitorExp   = "";
         for (int i = 0; i < monitorIdStr.length(); ++i) {
-            monitorExp += SUPERSCRIPT_DIGITS[monitorIdStr[i] - '0'];
+            this->identifier += SUPERSCRIPT_DIGITS[monitorIdStr[i] - '0'];
         }
-        this->identifier = monitorExp;
     }
-    this->identifier = "";
-
-    this->monitorId = monitorId;
 }
 
 std::string TagsMonitor::getWorkspaceName(uint16_t tag) const {

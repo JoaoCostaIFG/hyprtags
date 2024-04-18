@@ -5,6 +5,10 @@
 // TODO also need to take care of merging workspaces when monitors disappear
 //
 // TODO Use this to get focus: g_pCompositor->m_pLastWindow
+//
+// TODO deal with moving windows between monitors:
+//     - maybe this could be a handler that checked for window movements and handled them
+//     all there.
 
 #include <hyprland/src/desktop/DesktopTypes.hpp>
 #define WLR_USE_UNSTABLE
