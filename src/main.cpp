@@ -11,6 +11,7 @@
 //     all there.
 
 #include <hyprland/src/desktop/DesktopTypes.hpp>
+#include <hyprland/src/plugins/PluginAPI.hpp>
 #define WLR_USE_UNSTABLE
 
 #include <unistd.h>
@@ -150,6 +151,9 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     }
     // focus main screen
     HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:1");
+
+    // so keybinds work again
+    HyprlandAPI::reloadConfig();
 
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CColor{0.2, 1.0, 0.2, 1.0}, 5000);
     return {HYPRTAGS, "Hyprland version of DWM's tag system", "JoaoCostaIFG", "1.0"};
