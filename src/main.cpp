@@ -135,6 +135,12 @@ void onWorkspace(std::shared_ptr<CWorkspace> workspace) {
     tagMon->gotoTag(workspaceIdx);
 }
 
+void onCloseWindow(CWindow* window) {
+    Debug::log(LOG, HYPRTAGS ": onCloseWindow {}", (uintptr_t)window);
+
+    GET_CURRENT_TAGMONITOR()->unregisterWindow(window);
+}
+
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     PHANDLE = handle;
 
@@ -151,9 +157,12 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addDispatcher(PHANDLE, "tags-movetoworkspacesilent", tagsMovetoworkspacesilent);
     HyprlandAPI::addDispatcher(PHANDLE, "tags-movetoworkspace", tagsMovetoworkspace);
     HyprlandAPI::addDispatcher(PHANDLE, "tags-toggleworkspace", tagsToggleworkspace);
+    // so keybinds work and the errors disappear
+    HyprlandAPI::reloadConfig();
 
     HyprlandAPI::registerCallbackDynamic(PHANDLE, "workspace",
                                          [&](void* self, SCallbackInfo& info, std::any data) { onWorkspace(std::any_cast<std::shared_ptr<CWorkspace>>(data)); });
+    HyprlandAPI::registerCallbackDynamic(PHANDLE, "closeWindow", [&](void* self, SCallbackInfo& info, std::any data) { onCloseWindow(std::any_cast<CWindow*>(data)); });
 
     // At the start only the first tag is active
     for (auto& monitor : g_pCompositor->m_vMonitors) {
@@ -162,9 +171,6 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     }
     // focus main screen
     HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:1");
-
-    // so keybinds work again
-    HyprlandAPI::reloadConfig();
 
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CColor{0.2, 1.0, 0.2, 1.0}, 5000);
     return {HYPRTAGS, "Hyprland version of DWM's tag system", "JoaoCostaIFG", "1.0"};

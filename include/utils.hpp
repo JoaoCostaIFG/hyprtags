@@ -22,6 +22,7 @@
 #define GET_ACTIVE_SPECIALWORKSPACE() GET_CURRENT_MONITOR()->activeSpecialWorkspace
 #define GET_LAST_WINDOW()             g_pCompositor->m_pLastWindow
 
+// Returns the current active special workspace (if any) or the active 'normal' workspace
 static inline PHLWORKSPACE getActiveWorkspace() {
     auto monitor = GET_CURRENT_MONITOR();
     if (monitor->activeSpecialWorkspace != nullptr) {

@@ -158,17 +158,21 @@ bool TagsMonitor::isOnlyTag(uint16_t tag) const {
     return tags == TAG2BIT(tag);
 }
 
-void TagsMonitor::unregisterCurrentWindow() {
-    PHLWORKSPACE currentWorkspace = getActiveWorkspace();
-    CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow();
-
-    if (activeWindow == nullptr) {
+void TagsMonitor::unregisterWindow(CWindow* window) {
+    if (window == nullptr) {
         return;
     }
 
     for (auto& p : this->borrowedTags) {
-        p.second.erase(activeWindow);
+        p.second.erase(window);
     }
+}
+
+void TagsMonitor::unregisterCurrentWindow() {
+    PHLWORKSPACE currentWorkspace = getActiveWorkspace();
+    CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow();
+
+    this->unregisterWindow(activeWindow);
 }
 
 bool TagsMonitor::isValidTag(uint16_t tag) {
