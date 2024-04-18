@@ -12,14 +12,23 @@
 #include <hyprland/src/helpers/Monitor.hpp>
 #include <hyprland/src/desktop/Window.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
+#include <hyprland/src/desktop/DesktopTypes.hpp>
 #undef private
 
 #define HYPRTAGS "[hyprtags]"
 
-#define GET_CURRENT_MONITOR() g_pCompositor->getMonitorFromCursor()
-#define GET_ACTIVE_WORKSPACE() GET_CURRENT_MONITOR()->activeWorkspace
+#define GET_CURRENT_MONITOR()         g_pCompositor->getMonitorFromCursor()
+#define GET_ACTIVE_WORKSPACE()        GET_CURRENT_MONITOR()->activeWorkspace
+#define GET_ACTIVE_SPECIALWORKSPACE() GET_CURRENT_MONITOR()->activeSpecialWorkspace
+#define GET_LAST_WINDOW()             g_pCompositor->m_pLastWindow
 
-std::string getWorkspaceName(CMonitor* monitor, const std::string& workspace);
+static inline PHLWORKSPACE getActiveWorkspace() {
+    auto monitor = GET_CURRENT_MONITOR();
+    if (monitor->activeSpecialWorkspace != nullptr) {
+        return monitor->activeSpecialWorkspace;
+    }
+    return monitor->activeWorkspace;
+}
 
 std::unordered_set<CWindow*> getWindowsOnWorkspace(const std::string& workspaceName);
 

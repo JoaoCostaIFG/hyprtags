@@ -4,11 +4,6 @@
 #include <string>
 #include <format>
 
-// tags can only be numbers between 1 and 9 (inclusive)
-#define VALIDATE_TAG(tag)                                                                                                                                                          \
-    if (tag < 1 || 9 < tag)                                                                                                                                                        \
-        return;
-
 #define TAG2BIT(tag) (1 << (tag - 1))
 
 static const char* SUPERSCRIPT_DIGITS[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
@@ -120,8 +115,9 @@ void TagsMonitor::moveCurrentWindowToTag(uint16_t tag) {
         return;
     }
 
-    PHLWORKSPACE currentWorkspace = GET_ACTIVE_WORKSPACE();
+    PHLWORKSPACE currentWorkspace = getActiveWorkspace();
     CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow();
+
     if (activeWindow == nullptr) {
         // no window, do nothing
         return;
@@ -160,6 +156,19 @@ bool TagsMonitor::isOnlyTag(uint16_t tag) const {
     }
 
     return tags == TAG2BIT(tag);
+}
+
+void TagsMonitor::unregisterCurrentWindow() {
+    PHLWORKSPACE currentWorkspace = getActiveWorkspace();
+    CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow();
+
+    if (activeWindow == nullptr) {
+        return;
+    }
+
+    for (auto& p : this->borrowedTags) {
+        p.second.erase(activeWindow);
+    }
 }
 
 bool TagsMonitor::isValidTag(uint16_t tag) {

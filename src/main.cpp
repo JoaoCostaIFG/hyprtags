@@ -9,6 +9,8 @@
 // TODO deal with moving windows between monitors:
 //     - maybe this could be a handler that checked for window movements and handled them
 //     all there.
+//
+//  TODO - can't move windows out of special workspaces
 
 #include <hyprland/src/desktop/DesktopTypes.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
@@ -66,6 +68,15 @@ void tagsWorkspacealttab(const std::string& ignored) {
 void tagsMovetoworkspacesilent(const std::string& workspace) {
     Debug::log(LOG, HYPRTAGS ": tags-movetoworkspacesilent {}", workspace);
 
+    if (workspace.rfind("special:", 0) == 0) {
+        // special windows in special workspaces are not managed by us. Just need to make sure the window is not borrowed
+        // by anyone before moving it.
+        Debug::log(LOG, HYPRTAGS ": tags-movetoworkspacesilent {} is a special workspace", workspace);
+        GET_CURRENT_TAGMONITOR()->unregisterCurrentWindow();
+        HyprlandAPI::invokeHyprctlCommand("dispatch", "movetoworkspacesilent " + workspace);
+        return;
+    }
+
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
         Debug::log(ERR, HYPRTAGS ": tags-movetoworkspacesilent {} is invalid", workspace);
@@ -114,7 +125,7 @@ void onWorkspace(std::shared_ptr<CWorkspace> workspace) {
         return;
     }
 
-    auto tagMon = GET_CURRENT_TAGMONITOR();
+    auto     tagMon       = GET_CURRENT_TAGMONITOR();
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace->m_szName);
     // if the workspace is the current one, it means we were the ones that triggered the change, so do nothing
     if (tagMon->isOnlyTag(workspaceIdx)) {
