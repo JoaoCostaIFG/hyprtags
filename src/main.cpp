@@ -10,8 +10,6 @@
 //     - maybe this could be a handler that checked for window movements and handled them
 //     all there.
 
-#include <hyprland/src/desktop/DesktopTypes.hpp>
-#include <hyprland/src/plugins/PluginAPI.hpp>
 #define WLR_USE_UNSTABLE
 
 #include <unistd.h>
@@ -19,9 +17,9 @@
 #include <unordered_map>
 #include <format>
 #include <string>
+#include <any>
 
 #include <hyprland/src/includes.hpp>
-#include <any>
 
 #define private public
 #include <hyprland/src/Compositor.hpp>
@@ -29,6 +27,8 @@
 #include <hyprland/src/desktop/Workspace.hpp>
 #include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/helpers/Monitor.hpp>
+#include <hyprland/src/desktop/DesktopTypes.hpp>
+#include <hyprland/src/plugins/PluginAPI.hpp>
 #undef private
 
 #include "../include/globals.hpp"
@@ -147,7 +147,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     if (HASH != GIT_COMMIT_HASH) {
         HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Failure in initialization: Version mismatch (headers ver is not equal to running Hyprland ver)",
                                      CColor{1.0, 0.2, 0.2, 1.0}, 5000);
-        throw std::runtime_error("[hww] Version mismatch");
+        throw std::runtime_error("[hww] Version mismatch. HASH=" + HASH + ", GIT_COMMIT_HASH=" + GIT_COMMIT_HASH);
     }
 
     HyprlandAPI::addDispatcher(PHANDLE, "tags-workspace", tagsWorkspace);

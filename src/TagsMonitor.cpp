@@ -116,7 +116,7 @@ void TagsMonitor::moveCurrentWindowToTag(uint16_t tag) {
     }
 
     PHLWORKSPACE currentWorkspace = getActiveWorkspace();
-    CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow();
+    CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow().get();
 
     if (activeWindow == nullptr) {
         // no window, do nothing
@@ -170,7 +170,7 @@ void TagsMonitor::unregisterWindow(CWindow* window) {
 
 void TagsMonitor::unregisterCurrentWindow() {
     PHLWORKSPACE currentWorkspace = getActiveWorkspace();
-    CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow();
+    CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow().get();
 
     this->unregisterWindow(activeWindow);
 }
