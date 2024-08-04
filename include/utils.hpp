@@ -7,8 +7,9 @@
 
 #include <hyprland/src/includes.hpp>
 
-#define private public
 #include <hyprland/src/Compositor.hpp>
+
+#define private public
 #include <hyprland/src/helpers/Monitor.hpp>
 #include <hyprland/src/desktop/Window.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
