@@ -149,7 +149,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     if (HASH != GIT_COMMIT_HASH) {
         HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Failure in initialization: Version mismatch (headers ver is not equal to running Hyprland ver)",
-                                     CColor{1.0, 0.2, 0.2, 1.0}, 5000);
+                                     CHyprColor{1.0, 0.2, 0.2, 1.0}, 5000);
         throw std::runtime_error("[hww] Version mismatch. HASH=" + HASH + ", GIT_COMMIT_HASH=" + GIT_COMMIT_HASH);
     }
 
@@ -172,12 +172,12 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     // focus main screen
     HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:1");
 
-    HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CColor{0.2, 1.0, 0.2, 1.0}, 5000);
+    HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CHyprColor{0.2, 1.0, 0.2, 1.0}, 5000);
     return {HYPRTAGS, "Hyprland version of DWM's tag system", "JoaoCostaIFG", "1.0"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
-    HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Unloaded!", CColor{0.2, 1.0, 0.2, 1.0}, 5000);
+    HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Unloaded!", CHyprColor{0.2, 1.0, 0.2, 1.0}, 5000);
 
     g_tagsMonitors.clear();
 }
