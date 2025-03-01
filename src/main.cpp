@@ -46,7 +46,7 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
 }
 
 static SDispatchResult tagsWorkspace(const std::string& workspace) {
-    Debug::log(LOG, std::format(HYPRTAGS ": tags-workspace {}", workspace));
+    Debug::log(LOG, HYPRTAGS ": tags-workspace {}", workspace);
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
@@ -67,7 +67,7 @@ static SDispatchResult tagsWorkspacealttab(const std::string& ignored) {
 }
 
 static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
-    Debug::log(LOG, std::format(HYPRTAGS ": tags-movetoworkspacesilent {}", workspace));
+    Debug::log(LOG, HYPRTAGS ": tags-movetoworkspacesilent {}", workspace);
 
     if (workspace.rfind("special:", 0) == 0) {
         // special windows in special workspaces are not managed by us. Just need to make sure the window is not borrowed
@@ -89,7 +89,7 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
 }
 
 static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
-    Debug::log(LOG, std::format(HYPRTAGS ": tags-movetoworkspace {}", workspace));
+    Debug::log(LOG, HYPRTAGS ": tags-movetoworkspace {}", workspace);
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
@@ -104,7 +104,7 @@ static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
 }
 
 static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
-    Debug::log(LOG, std::format(HYPRTAGS ": tags-toggleworkspace {}", workspace));
+    Debug::log(LOG, HYPRTAGS ": tags-toggleworkspace {}", workspace);
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
@@ -149,6 +149,38 @@ static void onCloseWindow(void* self, std::any data) {
     GET_CURRENT_TAGMONITOR()->unregisterWindow(PWINDOW.get());
 }
 
+static void onMonitorAdded(void* self, std::any data) {
+    // data is guaranteed
+    const auto monitor   = std::any_cast<PHLMONITOR>(data);
+    const auto monitorId = monitor->ID;
+
+    Debug::log(LOG, HYPRTAGS ": onMonitorAdded {}", monitorId);
+
+    if (g_tagsMonitors.find(monitorId) != g_tagsMonitors.end()) {
+        Debug::log(LOG, HYPRTAGS ": onMonitorAdded {} monitor already registered", monitorId);
+        return;
+    }
+    // add new obj
+    TagsMonitor* tagsMonitor  = new TagsMonitor(monitorId);
+    g_tagsMonitors[monitorId] = tagsMonitor;
+}
+
+static void onMonitorRemoved(void* self, std::any data) {
+    // data is guaranteed
+    const auto monitor   = std::any_cast<PHLMONITOR>(data);
+    const auto monitorId = monitor->ID;
+
+    Debug::log(LOG, HYPRTAGS ": onMonitorRemoved {}", monitorId);
+
+    if (g_tagsMonitors.find(monitorId) == g_tagsMonitors.end()) {
+        Debug::log(LOG, HYPRTAGS ": onMonitorRemoved {} monitor not registered", monitorId);
+        return;
+    }
+    // remove monitor
+    delete g_tagsMonitors[monitorId];
+    g_tagsMonitors.erase(monitorId);
+}
+
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     PHANDLE = handle;
 
@@ -171,6 +203,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     // static auto P1 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "workspace", [&](void* self, SCallbackInfo& info, std::any data) { onWorkspace(self, data); });
     static auto P2 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "closeWindow", [&](void* self, SCallbackInfo& info, std::any data) { onCloseWindow(self, data); });
+    static auto P3 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "monitorAdded", [&](void* self, SCallbackInfo& info, std::any data) { onMonitorAdded(self, data); });
+    static auto P4 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "preMonitorRemoved", [&](void* self, SCallbackInfo& info, std::any data) { onMonitorRemoved(self, data); });
 
     // At the start only the first tag is active
     for (auto& monitor : g_pCompositor->m_vMonitors) {
@@ -178,10 +212,11 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         g_tagsMonitors[monitor->ID] = tagsMonitor;
     }
     // focus main screen
+    // TODO: take setting to select main screen
     HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:1");
 
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CHyprColor{0.2, 1.0, 0.2, 1.0}, 5000);
-    return {HYPRTAGS, "Hyprland version of DWM's tag system", "JoaoCostaIFG", "1.0"};
+    return {HYPRTAGS, "Hyprland version of DWM's tag system", "JoaoCostaIFG", "1.1"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
