@@ -192,6 +192,11 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         throw std::runtime_error("[hww] Version mismatch. HASH=" + HASH + ", GIT_COMMIT_HASH=" + GIT_COMMIT_HASH);
     }
 
+    /* Config */
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprtags:main_display", Hyprlang::STRING{""});
+    static auto* const MAIN_DISPLAY = (Hyprlang::STRING const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprtags:main_display")->getDataStaticPtr();
+
+    /* Dispatchers */
     bool success = true;
     success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-workspace", ::tagsWorkspace);
     success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-workspacealttab", ::tagsWorkspacealttab);
@@ -211,12 +216,24 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         TagsMonitor* tagsMonitor    = new TagsMonitor(monitor->ID);
         g_tagsMonitors[monitor->ID] = tagsMonitor;
     }
-    // focus main screen
-    // TODO: take setting to select main screen
-    HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:1");
+    // focus main screen. if configured. Otherwise focus workspace 1 (of monitor 0)
+    const auto MAIN_DISPLAY_STR = std::string{*MAIN_DISPLAY};
+    bool       found            = false;
+    for (auto& monitor : g_pCompositor->m_vMonitors) {
+        if (monitor->szName != MAIN_DISPLAY_STR) {
+            continue;
+        }
+
+        found = true;
+        g_tagsMonitors[monitor->ID]->gotoTag(1);
+        break;
+    }
+    if (!found) {
+        HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:1");
+    }
 
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CHyprColor{0.2, 1.0, 0.2, 1.0}, 5000);
-    return {HYPRTAGS, "Hyprland version of DWM's tag system", "JoaoCostaIFG", "1.1"};
+    return {HYPRTAGS, "Hyprland version of DWM's tag system", "JoaoCostaIFG", "1.2"};
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
