@@ -12,6 +12,7 @@
 
 #define WLR_USE_UNSTABLE
 
+#include <format>
 #include <unistd.h>
 #include <unordered_map>
 #include <string>
@@ -44,26 +45,29 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
     return HYPRLAND_API_VERSION;
 }
 
-static void tagsWorkspace(const std::string& workspace) {
-    Debug::log(LOG, HYPRTAGS ": tags-workspace {}", workspace);
+static SDispatchResult tagsWorkspace(const std::string& workspace) {
+    Debug::log(LOG, std::format(HYPRTAGS ": tags-workspace {}", workspace));
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
-        Debug::log(ERR, HYPRTAGS ": tags-workspace {} is invalid", workspace);
-        return;
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-workspace {} is invalid", workspace)};
     }
 
     GET_CURRENT_TAGMONITOR()->gotoTag(workspaceIdx);
+
+    return SDispatchResult{};
 }
 
-static void tagsWorkspacealttab(const std::string& ignored) {
+static SDispatchResult tagsWorkspacealttab(const std::string& ignored) {
     Debug::log(LOG, HYPRTAGS ": tags-workspacealttab");
 
     GET_CURRENT_TAGMONITOR()->altTab();
+
+    return SDispatchResult{};
 }
 
-static void tagsMovetoworkspacesilent(const std::string& workspace) {
-    Debug::log(LOG, HYPRTAGS ": tags-movetoworkspacesilent {}", workspace);
+static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
+    Debug::log(LOG, std::format(HYPRTAGS ": tags-movetoworkspacesilent {}", workspace));
 
     if (workspace.rfind("special:", 0) == 0) {
         // special windows in special workspaces are not managed by us. Just need to make sure the window is not borrowed
@@ -71,42 +75,45 @@ static void tagsMovetoworkspacesilent(const std::string& workspace) {
         Debug::log(LOG, HYPRTAGS ": tags-movetoworkspacesilent {} is a special workspace", workspace);
         GET_CURRENT_TAGMONITOR()->unregisterCurrentWindow();
         HyprlandAPI::invokeHyprctlCommand("dispatch", "movetoworkspacesilent " + workspace);
-        return;
+        return SDispatchResult{};
     }
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
-        Debug::log(ERR, HYPRTAGS ": tags-movetoworkspacesilent {} is invalid", workspace);
-        return;
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspacesilent {} is invalid", workspace)};
     }
 
     GET_CURRENT_TAGMONITOR()->moveCurrentWindowToTag(workspaceIdx);
+
+    return SDispatchResult{};
 }
 
-static void tagsMovetoworkspace(const std::string& workspace) {
-    Debug::log(LOG, HYPRTAGS ": tags-movetoworkspace {}", workspace);
+static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
+    Debug::log(LOG, std::format(HYPRTAGS ": tags-movetoworkspace {}", workspace));
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
-        Debug::log(ERR, HYPRTAGS ": tags-movetoworkspace {} is invalid", workspace);
-        return;
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspace {} is invalid", workspace)};
     }
 
     auto tagMon = GET_CURRENT_TAGMONITOR();
     tagMon->moveCurrentWindowToTag(workspaceIdx);
     tagMon->gotoTag(workspaceIdx);
+
+    return SDispatchResult{};
 }
 
-static void tagsToggleworkspace(const std::string& workspace) {
-    Debug::log(LOG, HYPRTAGS ": tags-toggleworkspace {}", workspace);
+static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
+    Debug::log(LOG, std::format(HYPRTAGS ": tags-toggleworkspace {}", workspace));
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
-        Debug::log(ERR, HYPRTAGS ": tags-workspace {} is invalid", workspace);
-        return;
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-toworkspace {} is invalid", workspace)};
     }
 
     GET_CURRENT_TAGMONITOR()->toogleTag(workspaceIdx);
+
+    return SDispatchResult{};
 }
 
 /**
@@ -153,11 +160,12 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         throw std::runtime_error("[hww] Version mismatch. HASH=" + HASH + ", GIT_COMMIT_HASH=" + GIT_COMMIT_HASH);
     }
 
-    HyprlandAPI::addDispatcher(PHANDLE, "tags-workspace", tagsWorkspace);
-    HyprlandAPI::addDispatcher(PHANDLE, "tags-workspacealttab", tagsWorkspacealttab);
-    HyprlandAPI::addDispatcher(PHANDLE, "tags-movetoworkspacesilent", tagsMovetoworkspacesilent);
-    HyprlandAPI::addDispatcher(PHANDLE, "tags-movetoworkspace", tagsMovetoworkspace);
-    HyprlandAPI::addDispatcher(PHANDLE, "tags-toggleworkspace", tagsToggleworkspace);
+    bool success = true;
+    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-workspace", ::tagsWorkspace);
+    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-workspacealttab", ::tagsWorkspacealttab);
+    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-movetoworkspacesilent", ::tagsMovetoworkspacesilent);
+    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-movetoworkspace", ::tagsMovetoworkspace);
+    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-toggleworkspace", ::tagsToggleworkspace);
     // so keybinds work and the errors disappear
     HyprlandAPI::reloadConfig();
 
