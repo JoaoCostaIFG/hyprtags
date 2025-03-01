@@ -18,11 +18,11 @@
 #include <string>
 #include <any>
 
+#include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/includes.hpp>
 
-#include <hyprland/src/Compositor.hpp>
-
 #define private public
+#include <hyprland/src/config/ConfigManager.hpp>
 #include <hyprland/src/desktop/Window.hpp>
 #include <hyprland/src/desktop/Workspace.hpp>
 #include <hyprland/src/render/Renderer.hpp>
@@ -193,8 +193,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     }
 
     /* Config */
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprtags:main_display", Hyprlang::STRING{""});
-    static auto* const MAIN_DISPLAY = (Hyprlang::STRING const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprtags:main_display")->getDataStaticPtr();
+    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprtags:main_display", STRVAL_EMPTY);
 
     /* Dispatchers */
     bool success = true;
@@ -203,8 +202,12 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-movetoworkspacesilent", ::tagsMovetoworkspacesilent);
     success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-movetoworkspace", ::tagsMovetoworkspace);
     success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-toggleworkspace", ::tagsToggleworkspace);
+
     // so keybinds work and the errors disappear
     HyprlandAPI::reloadConfig();
+    g_pConfigManager->reload();
+
+    static auto* const MAIN_DISPLAY = (Hyprlang::STRING const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprtags:main_display")->getDataStaticPtr();
 
     // static auto P1 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "workspace", [&](void* self, SCallbackInfo& info, std::any data) { onWorkspace(self, data); });
     static auto P2 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "closeWindow", [&](void* self, SCallbackInfo& info, std::any data) { onCloseWindow(self, data); });
@@ -216,7 +219,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         TagsMonitor* tagsMonitor    = new TagsMonitor(monitor->ID);
         g_tagsMonitors[monitor->ID] = tagsMonitor;
     }
-    // focus main screen. if configured. Otherwise focus workspace 1 (of monitor 0)
+    // Focus main screen. if configured. Otherwise focus workspace 1 (of monitor 0)
     const auto MAIN_DISPLAY_STR = std::string{*MAIN_DISPLAY};
     bool       found            = false;
     for (auto& monitor : g_pCompositor->m_vMonitors) {
