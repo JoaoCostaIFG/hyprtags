@@ -35,7 +35,7 @@
 #include "../include/utils.hpp"
 #include "../include/TagsMonitor.hpp"
 
-#define GET_CURRENT_TAGMONITOR() g_tagsMonitors[GET_CURRENT_MONITOR()->ID]
+#define GET_CURRENT_TAGMONITOR() g_tagsMonitors[GET_CURRENT_MONITOR()->m_id]
 
 // Each monitor has a set of active tags: monitorID -> listOfTags
 static std::unordered_map<size_t, TagsMonitor*> g_tagsMonitors;
@@ -123,15 +123,15 @@ static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
  */
 static void onWorkspace(void* self, std::any data) {
     const auto workspace = std::any_cast<PHLWORKSPACE>(data);
-    Debug::log(LOG, HYPRTAGS ": onWorkspace {}", workspace->m_szName);
+    Debug::log(LOG, HYPRTAGS ": onWorkspace {}", workspace->m_name);
 
     // if the workspace is special, do nothing (we don't manage special workspaces)
-    if (workspace->m_bIsSpecialWorkspace) {
+    if (workspace->m_isSpecialWorkspace) {
         return;
     }
 
     auto     tagMon       = GET_CURRENT_TAGMONITOR();
-    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace->m_szName);
+    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace->m_name);
     // if the workspace is the current one, it means we were the ones that triggered the change, so do nothing
     if (tagMon->isOnlyTag(workspaceIdx)) {
         return;
@@ -152,7 +152,7 @@ static void onCloseWindow(void* self, std::any data) {
 static void onMonitorAdded(void* self, std::any data) {
     // data is guaranteed
     const auto monitor   = std::any_cast<PHLMONITOR>(data);
-    const auto monitorId = monitor->ID;
+    const auto monitorId = monitor->m_id;
 
     Debug::log(LOG, HYPRTAGS ": onMonitorAdded {}", monitorId);
 
@@ -168,7 +168,7 @@ static void onMonitorAdded(void* self, std::any data) {
 static void onMonitorRemoved(void* self, std::any data) {
     // data is guaranteed
     const auto monitor   = std::any_cast<PHLMONITOR>(data);
-    const auto monitorId = monitor->ID;
+    const auto monitorId = monitor->m_id;
 
     Debug::log(LOG, HYPRTAGS ": onMonitorRemoved {}", monitorId);
 
@@ -215,20 +215,20 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     static auto P4 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "preMonitorRemoved", [&](void* self, SCallbackInfo& info, std::any data) { onMonitorRemoved(self, data); });
 
     // At the start only the first tag is active
-    for (auto& monitor : g_pCompositor->m_vMonitors) {
-        TagsMonitor* tagsMonitor    = new TagsMonitor(monitor->ID);
-        g_tagsMonitors[monitor->ID] = tagsMonitor;
+    for (auto& monitor : g_pCompositor->m_monitors) {
+        TagsMonitor* tagsMonitor      = new TagsMonitor(monitor->m_id);
+        g_tagsMonitors[monitor->m_id] = tagsMonitor;
     }
     // Focus main screen. if configured. Otherwise focus workspace 1 (of monitor 0)
     const auto MAIN_DISPLAY_STR = std::string{*MAIN_DISPLAY};
     bool       found            = false;
-    for (auto& monitor : g_pCompositor->m_vMonitors) {
-        if (monitor->szName != MAIN_DISPLAY_STR) {
+    for (auto& monitor : g_pCompositor->m_monitors) {
+        if (monitor->m_name != MAIN_DISPLAY_STR) {
             continue;
         }
 
         found = true;
-        g_tagsMonitors[monitor->ID]->gotoTag(1);
+        g_tagsMonitors[monitor->m_id]->gotoTag(1);
         break;
     }
     if (!found) {

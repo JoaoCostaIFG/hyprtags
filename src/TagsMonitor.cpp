@@ -68,7 +68,7 @@ bool TagsMonitor::activateTag(uint16_t tag) {
     this->borrowedTags[tag] = borrowedWindows;
     // move them over to our main workspace
     for (auto w : borrowedWindows) {
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent name:{},address:0x{:x}", currentWorkspace->m_szName, (uintptr_t)w));
+        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent name:{},address:0x{:x}", currentWorkspace->m_name, (uintptr_t)w));
     }
 
     tags |= TAG2BIT(tag);
