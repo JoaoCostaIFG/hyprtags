@@ -6,30 +6,10 @@
 
 #define TAG2BIT(tag) (1 << (tag - 1))
 
-static const char* SUPERSCRIPT_DIGITS[] = {"⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
+TagsMonitor::TagsMonitor(uint64_t monitorId) : tags(1), hist(1), monitorId(monitorId) {}
 
-TagsMonitor::TagsMonitor(uint64_t monitorId) : tags(1), hist(1) {
-    this->setMonitorIdentifier(monitorId);
-
-    std::string workspaceName = this->getWorkspaceName(1);
-    HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:" + workspaceName);
-    HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("moveworkspacetomonitor name:{} {}", workspaceName, this->monitorId));
-}
-
-void TagsMonitor::setMonitorIdentifier(uint64_t monitorId) {
-    this->identifier = "";
-    this->monitorId  = monitorId;
-
-    if (monitorId > 0) {
-        const std::string monitorIdStr = std::to_string(monitorId + 1);
-        for (int i = 0; i < monitorIdStr.length(); ++i) {
-            this->identifier += SUPERSCRIPT_DIGITS[monitorIdStr[i] - '0'];
-        }
-    }
-}
-
-std::string TagsMonitor::getWorkspaceName(uint16_t tag) const {
-    return std::format("{}{}", tag, this->identifier);
+uint32_t TagsMonitor::getWorkspaceId(uint16_t tag) const {
+    return 10 * this->monitorId + tag;
 }
 
 void TagsMonitor::gotoTag(uint16_t tag) {
@@ -48,7 +28,7 @@ void TagsMonitor::gotoTag(uint16_t tag) {
     this->histMainTag = this->mainTag;
     this->tags        = TAG2BIT(tag);
     this->mainTag     = tag;
-    HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:" + this->getWorkspaceName(tag));
+    HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("workspace {}", this->getWorkspaceId(tag)));
 }
 
 bool TagsMonitor::activateTag(uint16_t tag) {
@@ -62,13 +42,13 @@ bool TagsMonitor::activateTag(uint16_t tag) {
     }
 
     PHLWORKSPACE                 currentWorkspace = GET_ACTIVE_WORKSPACE();
-    std::unordered_set<CWindow*> borrowedWindows  = getWindowsOnWorkspace(this->getWorkspaceName(tag));
+    std::unordered_set<CWindow*> borrowedWindows  = getWindowsOnWorkspace(this->getWorkspaceId(tag));
 
     // save borrowed windows for this tag
     this->borrowedTags[tag] = borrowedWindows;
     // move them over to our main workspace
     for (auto w : borrowedWindows) {
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent name:{},address:0x{:x}", currentWorkspace->m_name, (uintptr_t)w));
+        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", currentWorkspace->m_id, (uintptr_t)w));
     }
 
     tags |= TAG2BIT(tag);
@@ -85,11 +65,11 @@ bool TagsMonitor::deactivateTag(uint16_t tag) {
         return false;
     }
 
-    std::string borrowedWorkspaceName = this->getWorkspaceName(tag);
+    uint32_t borrowedWorkspaceId = this->getWorkspaceId(tag);
 
     // move windows to their original workspace
     for (auto& w : this->borrowedTags[tag]) {
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent name:{},address:0x{:x}", borrowedWorkspaceName, (uintptr_t)w));
+        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", borrowedWorkspaceId, (uintptr_t)w));
     }
     // clear the borrowed information for the tag
     this->borrowedTags.erase(tag);
@@ -135,7 +115,7 @@ void TagsMonitor::moveCurrentWindowToTag(uint16_t tag) {
     } else {
         // otherwise, it belonged to the current main workspace
         // just move it
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent name:{},address:0x{:x}", this->getWorkspaceName(tag), (uintptr_t)activeWindow));
+        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", this->getWorkspaceId(tag), (uintptr_t)activeWindow));
     }
 }
 

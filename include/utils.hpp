@@ -32,6 +32,6 @@ static inline PHLWORKSPACE getActiveWorkspace() {
     return monitor->m_activeWorkspace;
 }
 
-std::unordered_set<CWindow*> getWindowsOnWorkspace(const std::string& workspaceName);
+std::unordered_set<CWindow*> getWindowsOnWorkspace(const uint32_t workspaceId);
 
 #endif //HYPRTAGS_UTILS_H

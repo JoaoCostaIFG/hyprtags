@@ -32,7 +32,13 @@ You can also use `hyprpm` as shown above to download and build the plugin and th
 
 ## Usage
 
-I just changed the default dispatchers for dealing with windows and workspaces to these new replacements:
+Source the plugin generated config by adding the following line to your `hyprland.conf`:
+
+```ini
+source = /tmp/hyprtags.conf
+```
+
+Afterwards, change the default dispatchers for dealing with windows and workspaces to the new replacements:
 
 ```sh
 #

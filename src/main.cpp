@@ -10,6 +10,7 @@
 //     - maybe this could be a handler that checked for window movements and handled them
 //     all there.
 
+#include <ios>
 #define WLR_USE_UNSTABLE
 
 #include <format>
@@ -181,6 +182,33 @@ static void onMonitorRemoved(void* self, std::any data) {
     g_tagsMonitors.erase(monitorId);
 }
 
+/**
+ * Initialize the monitors.
+ * Create a config file to source workspace rules.
+ */
+static bool generateWorkspaceRulesFile(void) {
+    std::ofstream file("/tmp/hyprtags.conf");
+    if (!file.is_open()) {
+        return false;
+    }
+
+    for (const auto& pair : g_tagsMonitors) {
+        auto id      = pair.first;
+        auto name    = g_pCompositor->getMonitorFromID(id)->m_name;
+        auto monitor = pair.second;
+
+        file << std::format("# monitor ", name) << std::endl;
+        file << std::format("workspace = {}, defaultName:1, monitor:{}, default:true", monitor->getWorkspaceId(1), name) << std::endl;
+        for (uint32_t i = 2; i < 10; ++i) {
+            file << std::format("workspace = {}, defaultName:{}, monitor:{}", monitor->getWorkspaceId(i), i, name) << std::endl;
+        }
+        file << std::endl;
+    }
+
+    file.close();
+    return true;
+}
+
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     PHANDLE = handle;
 
@@ -203,8 +231,18 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-movetoworkspace", ::tagsMovetoworkspace);
     success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-toggleworkspace", ::tagsToggleworkspace);
 
+    // At the start only the first tag is active
+    for (auto& monitor : g_pCompositor->m_monitors) {
+        TagsMonitor* tagsMonitor      = new TagsMonitor(monitor->m_id);
+        g_tagsMonitors[monitor->m_id] = tagsMonitor;
+    }
+    if (!generateWorkspaceRulesFile()) {
+        Debug::log(WARN, HYPRTAGS ": Failed to write workspace rules");
+    }
+
     // so keybinds work and the errors disappear
-    HyprlandAPI::reloadConfig();
+    // HyprlandAPI::reloadConfig();
+    // skipping api to get instant reload
     g_pConfigManager->reload();
 
     static auto* const MAIN_DISPLAY = (Hyprlang::STRING const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprtags:main_display")->getDataStaticPtr();
@@ -214,25 +252,20 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     static auto P3 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "monitorAdded", [&](void* self, SCallbackInfo& info, std::any data) { onMonitorAdded(self, data); });
     static auto P4 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "preMonitorRemoved", [&](void* self, SCallbackInfo& info, std::any data) { onMonitorRemoved(self, data); });
 
-    // At the start only the first tag is active
+    // Focus main screen, if configured
+    const auto   MAIN_DISPLAY_STR = std::string{*MAIN_DISPLAY};
+    TagsMonitor* mainMonitor      = nullptr;
     for (auto& monitor : g_pCompositor->m_monitors) {
-        TagsMonitor* tagsMonitor      = new TagsMonitor(monitor->m_id);
-        g_tagsMonitors[monitor->m_id] = tagsMonitor;
-    }
-    // Focus main screen. if configured. Otherwise focus workspace 1 (of monitor 0)
-    const auto MAIN_DISPLAY_STR = std::string{*MAIN_DISPLAY};
-    bool       found            = false;
-    for (auto& monitor : g_pCompositor->m_monitors) {
-        if (monitor->m_name != MAIN_DISPLAY_STR) {
-            continue;
+        TagsMonitor* tagsMonitor = g_tagsMonitors[monitor->m_id];
+        if (monitor->m_name == MAIN_DISPLAY_STR) {
+            mainMonitor = tagsMonitor;
+            break;
         }
-
-        found = true;
-        g_tagsMonitors[monitor->m_id]->gotoTag(1);
-        break;
     }
-    if (!found) {
-        HyprlandAPI::invokeHyprctlCommand("dispatch", "workspace name:1");
+    if (mainMonitor) {
+        mainMonitor->gotoTag(1);
+    } else {
+        Debug::log(WARN, HYPRTAGS ": Failed to find configured main display");
     }
 
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CHyprColor{0.2, 1.0, 0.2, 1.0}, 5000);

@@ -34,21 +34,21 @@ class TagsMonitor {
     void altTab();
 
     /* Returns true if the tag is the only tag active (current, no borrows) */
-    bool        isOnlyTag(uint16_t tag) const;
+    bool isOnlyTag(uint16_t tag) const;
 
-    void        unregisterWindow(CWindow* window);
+    void unregisterWindow(CWindow* window);
 
     /* garantees that the current window is not registered as borrowed by anyone.
      * This is useful when the window is moved to a special workspace
      */
     void        unregisterCurrentWindow();
 
+    uint32_t    getWorkspaceId(uint16_t tag) const;
+
     static bool isValidTag(uint16_t tag);
 
   private:
     uint64_t                                                   monitorId;
-    std::string                                                identifier;
-
     uint16_t                                                   tags;
     uint16_t                                                   mainTag;
     std::unordered_map<uint16_t, std::unordered_set<CWindow*>> borrowedTags; // tag -> set of WINDOWS
@@ -59,11 +59,9 @@ class TagsMonitor {
     bool activateTag(uint16_t tag);
 
     /* Returns true if the tag was deactivated, false otherwise (was not activate) */
-    bool        deactivateTag(uint16_t tag);
+    bool deactivateTag(uint16_t tag);
 
-    void        setMonitorIdentifier(uint64_t monitorId);
-
-    std::string getWorkspaceName(uint16_t tag) const;
+    void setMonitorIdentifier(uint64_t monitorId);
 };
 
 #endif //HYPRTAGS_TAGSMONITOR_H
