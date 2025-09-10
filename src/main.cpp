@@ -10,7 +10,6 @@
 //     - maybe this could be a handler that checked for window movements and handled them
 //     all there.
 
-#include <ios>
 #define WLR_USE_UNSTABLE
 
 #include <format>
@@ -193,14 +192,14 @@ static bool generateWorkspaceRulesFile(void) {
     }
 
     for (const auto& pair : g_tagsMonitors) {
-        auto id      = pair.first;
-        auto name    = g_pCompositor->getMonitorFromID(id)->m_name;
-        auto monitor = pair.second;
+        auto id          = pair.first;
+        auto monitorName = g_pCompositor->getMonitorFromID(id)->m_name;
+        auto monitor     = pair.second;
 
-        file << std::format("# monitor ", name) << std::endl;
-        file << std::format("workspace = {}, defaultName:1, monitor:{}, default:true", monitor->getWorkspaceId(1), name) << std::endl;
-        for (uint32_t i = 2; i < 10; ++i) {
-            file << std::format("workspace = {}, defaultName:{}, monitor:{}", monitor->getWorkspaceId(i), i, name) << std::endl;
+        file << std::format("# monitor ", monitorName) << std::endl;
+        for (uint32_t i = 1; i < 10; ++i) {
+            file << std::format("workspace = {}, defaultName:{}, monitor:{}, persistent:true{}", monitor->getWorkspaceId(i), i, monitorName, ((i == 1) ? ", default:true" : ""))
+                 << std::endl;
         }
         file << std::endl;
     }
