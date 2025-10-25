@@ -246,7 +246,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     static auto* const MAIN_DISPLAY = (Hyprlang::STRING const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprtags:main_display")->getDataStaticPtr();
 
-    // static auto P1 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "workspace", [&](void* self, SCallbackInfo& info, std::any data) { onWorkspace(self, data); });
+    static auto P1 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "workspace", [&](void* self, SCallbackInfo& info, std::any data) { onWorkspace(self, data); });
     static auto P2 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "closeWindow", [&](void* self, SCallbackInfo& info, std::any data) { onCloseWindow(self, data); });
     static auto P3 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "monitorAdded", [&](void* self, SCallbackInfo& info, std::any data) { onMonitorAdded(self, data); });
     static auto P4 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "preMonitorRemoved", [&](void* self, SCallbackInfo& info, std::any data) { onMonitorRemoved(self, data); });
