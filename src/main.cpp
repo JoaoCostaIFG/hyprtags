@@ -213,7 +213,13 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     const std::string HASH = __hyprland_api_get_hash();
 
-    if (HASH != GIT_COMMIT_HASH) {
+    std::string cleanHash = HASH;
+    size_t pos = cleanHash.find_first_of("_.");
+    if (pos != std::string::npos) {
+        cleanHash = cleanHash.substr(0, pos);
+    }
+
+    if (cleanHash != GIT_COMMIT_HASH) {
         HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Failure in initialization: Version mismatch (headers ver is not equal to running Hyprland ver)",
                                      CHyprColor{1.0, 0.2, 0.2, 1.0}, 5000);
         throw std::runtime_error("[hww] Version mismatch. HASH=" + HASH + ", GIT_COMMIT_HASH=" + GIT_COMMIT_HASH);
