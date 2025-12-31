@@ -11,7 +11,7 @@
 
 #define private public
 #include <hyprland/src/helpers/Monitor.hpp>
-#include <hyprland/src/desktop/Window.hpp>
+#include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/desktop/DesktopTypes.hpp>
 #undef private
@@ -32,6 +32,6 @@ static inline PHLWORKSPACE getActiveWorkspace() {
     return monitor->m_activeWorkspace;
 }
 
-std::unordered_set<CWindow*> getWindowsOnWorkspace(const uint32_t workspaceId);
+std::unordered_set<Desktop::View::CWindow*> getWindowsOnWorkspace(const uint32_t workspaceId);
 
 #endif //HYPRTAGS_UTILS_H
