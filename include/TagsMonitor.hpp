@@ -36,7 +36,7 @@ class TagsMonitor {
     /* Returns true if the tag is the only tag active (current, no borrows) */
     bool isOnlyTag(uint16_t tag) const;
 
-    void unregisterWindow(CWindow* window);
+    void unregisterWindow(Desktop::View::CWindow* window);
 
     /* garantees that the current window is not registered as borrowed by anyone.
      * This is useful when the window is moved to a special workspace
@@ -48,12 +48,12 @@ class TagsMonitor {
     static bool isValidTag(uint16_t tag);
 
   private:
-    uint64_t                                                   monitorId;
-    uint16_t                                                   tags;
-    uint16_t                                                   mainTag;
-    std::unordered_map<uint16_t, std::unordered_set<CWindow*>> borrowedTags; // tag -> set of WINDOWS
-    uint16_t                                                   hist;
-    uint16_t                                                   histMainTag;
+    uint64_t                                                                  monitorId;
+    uint16_t                                                                  tags;
+    uint16_t                                                                  mainTag;
+    std::unordered_map<uint16_t, std::unordered_set<Desktop::View::CWindow*>> borrowedTags; // tag -> set of WINDOWS
+    uint16_t                                                                  hist;
+    uint16_t                                                                  histMainTag;
 
     /* Returns true if the tag was activated, false otherwise (was already activate) */
     bool activateTag(uint16_t tag);

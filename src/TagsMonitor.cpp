@@ -41,8 +41,8 @@ bool TagsMonitor::activateTag(uint16_t tag) {
         return false;
     }
 
-    PHLWORKSPACE                 currentWorkspace = GET_ACTIVE_WORKSPACE();
-    std::unordered_set<CWindow*> borrowedWindows  = getWindowsOnWorkspace(this->getWorkspaceId(tag));
+    PHLWORKSPACE                                currentWorkspace = GET_ACTIVE_WORKSPACE();
+    std::unordered_set<Desktop::View::CWindow*> borrowedWindows  = getWindowsOnWorkspace(this->getWorkspaceId(tag));
 
     // save borrowed windows for this tag
     this->borrowedTags[tag] = borrowedWindows;
@@ -95,8 +95,8 @@ void TagsMonitor::moveCurrentWindowToTag(uint16_t tag) {
         return;
     }
 
-    PHLWORKSPACE currentWorkspace = getActiveWorkspace();
-    CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow().get();
+    PHLWORKSPACE            currentWorkspace = getActiveWorkspace();
+    Desktop::View::CWindow* activeWindow     = currentWorkspace->getLastFocusedWindow().get();
 
     if (activeWindow == nullptr) {
         // no window, do nothing
@@ -138,7 +138,7 @@ bool TagsMonitor::isOnlyTag(uint16_t tag) const {
     return tags == TAG2BIT(tag);
 }
 
-void TagsMonitor::unregisterWindow(CWindow* window) {
+void TagsMonitor::unregisterWindow(Desktop::View::CWindow* window) {
     if (window == nullptr) {
         return;
     }
@@ -149,8 +149,8 @@ void TagsMonitor::unregisterWindow(CWindow* window) {
 }
 
 void TagsMonitor::unregisterCurrentWindow() {
-    PHLWORKSPACE currentWorkspace = getActiveWorkspace();
-    CWindow*     activeWindow     = currentWorkspace->getLastFocusedWindow().get();
+    PHLWORKSPACE            currentWorkspace = getActiveWorkspace();
+    Desktop::View::CWindow* activeWindow     = currentWorkspace->getLastFocusedWindow().get();
 
     this->unregisterWindow(activeWindow);
 }

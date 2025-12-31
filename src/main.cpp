@@ -13,6 +13,7 @@
 #define WLR_USE_UNSTABLE
 
 #include <format>
+#include <fstream>
 #include <unistd.h>
 #include <unordered_map>
 #include <string>
@@ -23,7 +24,7 @@
 
 #define private public
 #include <hyprland/src/config/ConfigManager.hpp>
-#include <hyprland/src/desktop/Window.hpp>
+#include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/desktop/Workspace.hpp>
 #include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/helpers/Monitor.hpp>
@@ -46,7 +47,7 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
 }
 
 static SDispatchResult tagsWorkspace(const std::string& workspace) {
-    Debug::log(LOG, HYPRTAGS ": tags-workspace {}", workspace);
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-workspace {}", workspace);
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
@@ -59,7 +60,7 @@ static SDispatchResult tagsWorkspace(const std::string& workspace) {
 }
 
 static SDispatchResult tagsWorkspacealttab(const std::string& ignored) {
-    Debug::log(LOG, HYPRTAGS ": tags-workspacealttab");
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-workspacealttab");
 
     GET_CURRENT_TAGMONITOR()->altTab();
 
@@ -67,12 +68,12 @@ static SDispatchResult tagsWorkspacealttab(const std::string& ignored) {
 }
 
 static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
-    Debug::log(LOG, HYPRTAGS ": tags-movetoworkspacesilent {}", workspace);
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspacesilent {}", workspace);
 
     if (workspace.rfind("special:", 0) == 0) {
         // special windows in special workspaces are not managed by us. Just need to make sure the window is not borrowed
         // by anyone before moving it.
-        Debug::log(LOG, HYPRTAGS ": tags-movetoworkspacesilent {} is a special workspace", workspace);
+        Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspacesilent {} is a special workspace", workspace);
         GET_CURRENT_TAGMONITOR()->unregisterCurrentWindow();
         HyprlandAPI::invokeHyprctlCommand("dispatch", "movetoworkspacesilent " + workspace);
         return SDispatchResult{};
@@ -89,7 +90,7 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
 }
 
 static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
-    Debug::log(LOG, HYPRTAGS ": tags-movetoworkspace {}", workspace);
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspace {}", workspace);
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
@@ -104,7 +105,7 @@ static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
 }
 
 static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
-    Debug::log(LOG, HYPRTAGS ": tags-toggleworkspace {}", workspace);
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-toggleworkspace {}", workspace);
 
     uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
     if (!TagsMonitor::isValidTag(workspaceIdx)) {
@@ -123,7 +124,7 @@ static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
  */
 static void onWorkspace(void* self, std::any data) {
     const auto workspace = std::any_cast<PHLWORKSPACE>(data);
-    Debug::log(LOG, HYPRTAGS ": onWorkspace {}", workspace->m_name);
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": onWorkspace {}", workspace->m_name);
 
     // if the workspace is special, do nothing (we don't manage special workspaces)
     if (workspace->m_isSpecialWorkspace) {
@@ -144,7 +145,7 @@ static void onCloseWindow(void* self, std::any data) {
     // data is guaranteed
     const auto PWINDOW = std::any_cast<PHLWINDOW>(data);
 
-    Debug::log(LOG, HYPRTAGS ": onCloseWindow {}", (uintptr_t)(PWINDOW.get()));
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": onCloseWindow {}", (uintptr_t)(PWINDOW.get()));
 
     GET_CURRENT_TAGMONITOR()->unregisterWindow(PWINDOW.get());
 }
@@ -154,10 +155,10 @@ static void onMonitorAdded(void* self, std::any data) {
     const auto monitor   = std::any_cast<PHLMONITOR>(data);
     const auto monitorId = monitor->m_id;
 
-    Debug::log(LOG, HYPRTAGS ": onMonitorAdded {}", monitorId);
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorAdded {}", monitorId);
 
     if (g_tagsMonitors.find(monitorId) != g_tagsMonitors.end()) {
-        Debug::log(LOG, HYPRTAGS ": onMonitorAdded {} monitor already registered", monitorId);
+        Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorAdded {} monitor already registered", monitorId);
         return;
     }
     // add new obj
@@ -170,10 +171,10 @@ static void onMonitorRemoved(void* self, std::any data) {
     const auto monitor   = std::any_cast<PHLMONITOR>(data);
     const auto monitorId = monitor->m_id;
 
-    Debug::log(LOG, HYPRTAGS ": onMonitorRemoved {}", monitorId);
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorRemoved {}", monitorId);
 
     if (g_tagsMonitors.find(monitorId) == g_tagsMonitors.end()) {
-        Debug::log(LOG, HYPRTAGS ": onMonitorRemoved {} monitor not registered", monitorId);
+        Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorRemoved {} monitor not registered", monitorId);
         return;
     }
     // remove monitor
@@ -237,7 +238,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         g_tagsMonitors[monitor->m_id] = tagsMonitor;
     }
     if (!generateWorkspaceRulesFile()) {
-        Debug::log(WARN, HYPRTAGS ": Failed to write workspace rules");
+        Log::logger->log(Log::WARN, HYPRTAGS ": Failed to write workspace rules");
     }
 
     // so keybinds work and the errors disappear
@@ -265,7 +266,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     if (mainMonitor) {
         mainMonitor->gotoTag(1);
     } else {
-        Debug::log(WARN, HYPRTAGS ": Failed to find configured main display");
+        Log::logger->log(Log::WARN, HYPRTAGS ": Failed to find configured main display");
     }
 
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CHyprColor{0.2, 1.0, 0.2, 1.0}, 5000);
