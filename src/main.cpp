@@ -152,7 +152,10 @@ static void onCloseWindow(void* self, std::any data) {
 
     Log::logger->log(Log::DEBUG, HYPRTAGS ": onCloseWindow {}", (uintptr_t)(PWINDOW.get()));
 
-    GET_CURRENT_TAGMONITOR()->unregisterWindow(PWINDOW.get());
+    // Unregister from all monitors to avoid dangling pointers in borrowedTags
+    for (auto& [id, tagMon] : g_tagsMonitors) {
+        tagMon->unregisterWindow(PWINDOW.get());
+    }
 }
 
 static void onMonitorAdded(void* self, std::any data) {
