@@ -276,5 +276,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 APICALL EXPORT void PLUGIN_EXIT() {
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Unloaded!", CHyprColor{0.2, 1.0, 0.2, 1.0}, 5000);
 
+    for (auto& [id, monitor] : g_tagsMonitors) {
+        delete monitor;
+    }
     g_tagsMonitors.clear();
 }
