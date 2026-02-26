@@ -6,7 +6,7 @@
 
 #define TAG2BIT(tag) (1 << (tag - 1))
 
-TagsMonitor::TagsMonitor(uint64_t monitorId) : tags(1), hist(1), monitorId(monitorId) {}
+TagsMonitor::TagsMonitor(uint64_t monitorId) : monitorId(monitorId), tags(1), mainTag(1), hist(1), histMainTag(1) {}
 
 uint64_t TagsMonitor::getWorkspaceId(uint16_t tag) const {
     return 10 * this->monitorId + tag;
