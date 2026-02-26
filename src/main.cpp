@@ -36,10 +36,27 @@
 #include "../include/utils.hpp"
 #include "../include/TagsMonitor.hpp"
 
-#define GET_CURRENT_TAGMONITOR() g_tagsMonitors[GET_CURRENT_MONITOR()->m_id]
-
 // Each monitor has a set of active tags: monitorID -> listOfTags
 static std::unordered_map<size_t, TagsMonitor*> g_tagsMonitors;
+
+/**
+ * @brief Safely get the TagsMonitor for the current monitor.
+ *
+ * @return TagsMonitor* or nullptr if monitor not found
+ */
+static TagsMonitor* getCurrentTagMonitor() {
+    auto monitor = GET_CURRENT_MONITOR();
+    if (!monitor) {
+        return nullptr;
+    }
+
+    auto it = g_tagsMonitors.find(monitor->m_id);
+    if (it == g_tagsMonitors.end()) {
+        return nullptr;
+    }
+
+    return it->second;
+}
 
 // Do NOT change this function.
 APICALL EXPORT std::string PLUGIN_API_VERSION() {
@@ -54,7 +71,12 @@ static SDispatchResult tagsWorkspace(const std::string& workspace) {
         return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-workspace '{}' is invalid", workspace)};
     }
 
-    GET_CURRENT_TAGMONITOR()->gotoTag(*tag);
+    auto tagMon = getCurrentTagMonitor();
+    if (!tagMon) {
+        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+    }
+
+    tagMon->gotoTag(*tag);
 
     return SDispatchResult{};
 }
@@ -62,7 +84,12 @@ static SDispatchResult tagsWorkspace(const std::string& workspace) {
 static SDispatchResult tagsWorkspacealttab(const std::string& ignored) {
     Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-workspacealttab");
 
-    GET_CURRENT_TAGMONITOR()->altTab();
+    auto tagMon = getCurrentTagMonitor();
+    if (!tagMon) {
+        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+    }
+
+    tagMon->altTab();
 
     return SDispatchResult{};
 }
@@ -70,11 +97,16 @@ static SDispatchResult tagsWorkspacealttab(const std::string& ignored) {
 static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
     Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspacesilent {}", workspace);
 
+    auto tagMon = getCurrentTagMonitor();
+    if (!tagMon) {
+        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+    }
+
     if (workspace.rfind("special:", 0) == 0) {
         // special windows in special workspaces are not managed by us. Just need to make sure the window is not borrowed
         // by anyone before moving it.
         Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspacesilent {} is a special workspace", workspace);
-        GET_CURRENT_TAGMONITOR()->unregisterCurrentWindow();
+        tagMon->unregisterCurrentWindow();
         HyprlandAPI::invokeHyprctlCommand("dispatch", "movetoworkspacesilent " + workspace);
         return SDispatchResult{};
     }
@@ -84,7 +116,7 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
         return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspacesilent '{}' is invalid", workspace)};
     }
 
-    GET_CURRENT_TAGMONITOR()->moveCurrentWindowToTag(*tag);
+    tagMon->moveCurrentWindowToTag(*tag);
 
     return SDispatchResult{};
 }
@@ -97,7 +129,11 @@ static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
         return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspace '{}' is invalid", workspace)};
     }
 
-    auto tagMon = GET_CURRENT_TAGMONITOR();
+    auto tagMon = getCurrentTagMonitor();
+    if (!tagMon) {
+        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+    }
+
     tagMon->moveCurrentWindowToTag(*tag);
     tagMon->gotoTag(*tag);
 
@@ -112,7 +148,12 @@ static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
         return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-toggleworkspace '{}' is invalid", workspace)};
     }
 
-    GET_CURRENT_TAGMONITOR()->toogleTag(*tag);
+    auto tagMon = getCurrentTagMonitor();
+    if (!tagMon) {
+        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+    }
+
+    tagMon->toogleTag(*tag);
 
     return SDispatchResult{};
 }
@@ -137,7 +178,11 @@ static void onWorkspace(void* self, std::any data) {
         return;
     }
 
-    auto tagMon = GET_CURRENT_TAGMONITOR();
+    auto tagMon = getCurrentTagMonitor();
+    if (!tagMon) {
+        return;
+    }
+
     // if the workspace is the current one, it means we were the ones that triggered the change, so do nothing
     if (tagMon->isOnlyTag(*tag)) {
         return;
