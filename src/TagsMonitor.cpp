@@ -8,7 +8,7 @@
 
 TagsMonitor::TagsMonitor(uint64_t monitorId) : tags(1), hist(1), monitorId(monitorId) {}
 
-uint32_t TagsMonitor::getWorkspaceId(uint16_t tag) const {
+uint64_t TagsMonitor::getWorkspaceId(uint16_t tag) const {
     return 10 * this->monitorId + tag;
 }
 

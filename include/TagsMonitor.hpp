@@ -43,7 +43,7 @@ class TagsMonitor {
      */
     void        unregisterCurrentWindow();
 
-    uint32_t    getWorkspaceId(uint16_t tag) const;
+    uint64_t    getWorkspaceId(uint16_t tag) const;
 
     static bool isValidTag(uint16_t tag);
 
