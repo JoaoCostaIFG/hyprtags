@@ -49,12 +49,12 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
 static SDispatchResult tagsWorkspace(const std::string& workspace) {
     Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-workspace {}", workspace);
 
-    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
-    if (!TagsMonitor::isValidTag(workspaceIdx)) {
-        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-workspace {} is invalid", workspace)};
+    auto tag = parseTag(workspace);
+    if (!tag) {
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-workspace '{}' is invalid", workspace)};
     }
 
-    GET_CURRENT_TAGMONITOR()->gotoTag(workspaceIdx);
+    GET_CURRENT_TAGMONITOR()->gotoTag(*tag);
 
     return SDispatchResult{};
 }
@@ -79,12 +79,12 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
         return SDispatchResult{};
     }
 
-    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
-    if (!TagsMonitor::isValidTag(workspaceIdx)) {
-        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspacesilent {} is invalid", workspace)};
+    auto tag = parseTag(workspace);
+    if (!tag) {
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspacesilent '{}' is invalid", workspace)};
     }
 
-    GET_CURRENT_TAGMONITOR()->moveCurrentWindowToTag(workspaceIdx);
+    GET_CURRENT_TAGMONITOR()->moveCurrentWindowToTag(*tag);
 
     return SDispatchResult{};
 }
@@ -92,14 +92,14 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
 static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
     Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspace {}", workspace);
 
-    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
-    if (!TagsMonitor::isValidTag(workspaceIdx)) {
-        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspace {} is invalid", workspace)};
+    auto tag = parseTag(workspace);
+    if (!tag) {
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspace '{}' is invalid", workspace)};
     }
 
     auto tagMon = GET_CURRENT_TAGMONITOR();
-    tagMon->moveCurrentWindowToTag(workspaceIdx);
-    tagMon->gotoTag(workspaceIdx);
+    tagMon->moveCurrentWindowToTag(*tag);
+    tagMon->gotoTag(*tag);
 
     return SDispatchResult{};
 }
@@ -107,12 +107,12 @@ static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
 static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
     Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-toggleworkspace {}", workspace);
 
-    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace);
-    if (!TagsMonitor::isValidTag(workspaceIdx)) {
-        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-toworkspace {} is invalid", workspace)};
+    auto tag = parseTag(workspace);
+    if (!tag) {
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-toggleworkspace '{}' is invalid", workspace)};
     }
 
-    GET_CURRENT_TAGMONITOR()->toogleTag(workspaceIdx);
+    GET_CURRENT_TAGMONITOR()->toogleTag(*tag);
 
     return SDispatchResult{};
 }
@@ -131,14 +131,19 @@ static void onWorkspace(void* self, std::any data) {
         return;
     }
 
-    auto     tagMon       = GET_CURRENT_TAGMONITOR();
-    uint16_t workspaceIdx = (uint16_t)std::stoi(workspace->m_name);
-    // if the workspace is the current one, it means we were the ones that triggered the change, so do nothing
-    if (tagMon->isOnlyTag(workspaceIdx)) {
+    // ignore non-numeric workspace names (named workspaces are not managed by us)
+    auto tag = parseTag(workspace->m_name);
+    if (!tag) {
         return;
     }
 
-    tagMon->gotoTag(workspaceIdx);
+    auto tagMon = GET_CURRENT_TAGMONITOR();
+    // if the workspace is the current one, it means we were the ones that triggered the change, so do nothing
+    if (tagMon->isOnlyTag(*tag)) {
+        return;
+    }
+
+    tagMon->gotoTag(*tag);
 }
 
 static void onCloseWindow(void* self, std::any data) {
