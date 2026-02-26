@@ -68,12 +68,12 @@ static SDispatchResult tagsWorkspace(const std::string& workspace) {
 
     auto tag = parseTag(workspace);
     if (!tag) {
-        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-workspace '{}' is invalid", workspace)};
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS " tags-workspace: invalid tag '{}'", workspace)};
     }
 
     auto tagMon = getCurrentTagMonitor();
     if (!tagMon) {
-        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+        return SDispatchResult{.success = false, .error = HYPRTAGS " tags-workspace: no monitor found"};
     }
 
     tagMon->gotoTag(*tag);
@@ -86,7 +86,7 @@ static SDispatchResult tagsWorkspacealttab(const std::string& ignored) {
 
     auto tagMon = getCurrentTagMonitor();
     if (!tagMon) {
-        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+        return SDispatchResult{.success = false, .error = HYPRTAGS " tags-workspacealttab: no monitor found"};
     }
 
     tagMon->altTab();
@@ -99,7 +99,7 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
 
     auto tagMon = getCurrentTagMonitor();
     if (!tagMon) {
-        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+        return SDispatchResult{.success = false, .error = HYPRTAGS " tags-movetoworkspacesilent: no monitor found"};
     }
 
     if (workspace.rfind("special:", 0) == 0) {
@@ -113,7 +113,7 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
 
     auto tag = parseTag(workspace);
     if (!tag) {
-        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspacesilent '{}' is invalid", workspace)};
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS " tags-movetoworkspacesilent: invalid tag '{}'", workspace)};
     }
 
     tagMon->moveCurrentWindowToTag(*tag);
@@ -126,12 +126,12 @@ static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
 
     auto tag = parseTag(workspace);
     if (!tag) {
-        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-movetoworkspace '{}' is invalid", workspace)};
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS " tags-movetoworkspace: invalid tag '{}'", workspace)};
     }
 
     auto tagMon = getCurrentTagMonitor();
     if (!tagMon) {
-        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+        return SDispatchResult{.success = false, .error = HYPRTAGS " tags-movetoworkspace: no monitor found"};
     }
 
     tagMon->moveCurrentWindowToTag(*tag);
@@ -145,12 +145,12 @@ static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
 
     auto tag = parseTag(workspace);
     if (!tag) {
-        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS ": tags-toggleworkspace '{}' is invalid", workspace)};
+        return SDispatchResult{.success = false, .error = std::format(HYPRTAGS " tags-toggleworkspace: invalid tag '{}'", workspace)};
     }
 
     auto tagMon = getCurrentTagMonitor();
     if (!tagMon) {
-        return SDispatchResult{.success = false, .error = HYPRTAGS ": no monitor found"};
+        return SDispatchResult{.success = false, .error = HYPRTAGS " tags-toggleworkspace: no monitor found"};
     }
 
     tagMon->toogleTag(*tag);
