@@ -178,10 +178,17 @@ static void onWorkspace(PHLWORKSPACE workspace) {
         return;
     }
 
-    auto tagMon = getCurrentTagMonitor();
-    if (!tagMon) {
+    // Use the workspace's monitor instead of cursor position
+    auto monitor = workspace->m_monitor.lock();
+    if (!monitor) {
         return;
     }
+
+    auto it = g_tagsMonitors.find(monitor->m_id);
+    if (it == g_tagsMonitors.end()) {
+        return;
+    }
+    auto tagMon = it->second;
 
     // if the workspace is the current one, it means we were the ones that triggered the change, so do nothing
     if (tagMon->isOnlyTag(*tag)) {
