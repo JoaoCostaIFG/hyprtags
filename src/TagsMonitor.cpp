@@ -78,7 +78,7 @@ bool TagsMonitor::deactivateTag(uint16_t tag) {
     return true;
 }
 
-bool TagsMonitor::toogleTag(uint16_t tag) {
+bool TagsMonitor::toggleTag(uint16_t tag) {
     // can't activate/deactivate the
     if (this->isOnlyTag(tag)) {
         return false;

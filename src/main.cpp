@@ -154,7 +154,7 @@ static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
         return SDispatchResult{.success = false, .error = HYPRTAGS " tags-toggleworkspace: no monitor found"};
     }
 
-    tagMon->toogleTag(*tag);
+    tagMon->toggleTag(*tag);
 
     return SDispatchResult{};
 }

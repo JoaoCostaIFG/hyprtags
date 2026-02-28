@@ -27,7 +27,7 @@ class TagsMonitor {
 
     void gotoTag(uint16_t tag);
 
-    bool toogleTag(uint16_t tag);
+    bool toggleTag(uint16_t tag);
 
     void moveCurrentWindowToTag(uint16_t tag);
 
