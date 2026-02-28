@@ -19,12 +19,6 @@ class TagsMonitor {
         return this->hist;
     }
 
-    void swapHist() {
-        const uint16_t tmp = this->tags;
-        this->tags         = this->hist;
-        this->hist         = tmp;
-    }
-
     void gotoTag(uint16_t tag);
 
     bool toggleTag(uint16_t tag);
@@ -60,8 +54,6 @@ class TagsMonitor {
 
     /* Returns true if the tag was deactivated, false otherwise (was not activate) */
     bool deactivateTag(uint16_t tag);
-
-    void setMonitorIdentifier(uint64_t monitorId);
 };
 
 #endif //HYPRTAGS_TAGSMONITOR_H

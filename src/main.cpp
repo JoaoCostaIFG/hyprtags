@@ -257,7 +257,11 @@ static bool generateWorkspaceRulesFile(void) {
         auto monitorName = g_pCompositor->getMonitorFromID(id)->m_name;
         auto monitor     = pair.second;
 
-        file << std::format("# monitor ", monitorName) << std::endl;
+        if (!monitor) {
+            continue;
+        }
+
+        file << std::format("# monitor {}", monitorName) << std::endl;
         for (uint32_t i = 1; i < 10; ++i) {
             file << std::format("workspace = {}, defaultName:{}, monitor:{}, persistent:true{}", monitor->getWorkspaceId(i), i, monitorName, ((i == 1) ? ", default:true" : ""))
                  << std::endl;
