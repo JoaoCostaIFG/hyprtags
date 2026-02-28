@@ -211,11 +211,11 @@ static void onCloseWindow(PHLWINDOW window) {
     if (!tagMon) {
         return;
     }
-    tagMon->unregisterWindow(window.get());
+    tagMon->unregisterWindow(window);
 
     // Unregister from all monitors to avoid dangling pointers in borrowedTags
     for (auto& [id, tagMon] : g_tagsMonitors) {
-        tagMon->unregisterWindow(window.get());
+        tagMon->unregisterWindow(window);
     }
 }
 
@@ -259,9 +259,9 @@ static void onMonitorRemoved(PHLMONITOR monitor) {
         auto allWindows = removedTagsMon->getAllWindows();
         for (auto& [tag, windows] : allWindows) {
             uint64_t targetWorkspaceId = targetTagsMon->getWorkspaceId(tag);
-            for (auto* window : windows) {
-                Log::logger->log(Log::DEBUG, HYPRTAGS ": Migrating window 0x{:x} to workspace {}", (uintptr_t)window, targetWorkspaceId);
-                HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", targetWorkspaceId, (uintptr_t)window));
+            for (auto& window : windows) {
+                Log::logger->log(Log::DEBUG, HYPRTAGS ": Migrating window 0x{:x} to workspace {}", (uintptr_t)window.get(), targetWorkspaceId);
+                HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", targetWorkspaceId, (uintptr_t)window.get()));
             }
         }
     } else {

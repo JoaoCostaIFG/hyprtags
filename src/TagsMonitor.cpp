@@ -41,14 +41,14 @@ bool TagsMonitor::activateTag(uint16_t tag) {
         return false;
     }
 
-    PHLWORKSPACE                                currentWorkspace = GET_ACTIVE_WORKSPACE();
-    std::unordered_set<Desktop::View::CWindow*> borrowedWindows  = getWindowsOnWorkspace(this->getWorkspaceId(tag));
+    PHLWORKSPACE                  currentWorkspace = GET_ACTIVE_WORKSPACE();
+    std::unordered_set<PHLWINDOW> borrowedWindows  = getWindowsOnWorkspace(this->getWorkspaceId(tag));
 
     // save borrowed windows for this tag
     this->borrowedTags[tag] = borrowedWindows;
     // move them over to our main workspace
-    for (auto w : borrowedWindows) {
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", currentWorkspace->m_id, (uintptr_t)w));
+    for (auto& w : borrowedWindows) {
+        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", currentWorkspace->m_id, (uintptr_t)w.get()));
     }
 
     tags |= TAG2BIT(tag);
@@ -69,7 +69,7 @@ bool TagsMonitor::deactivateTag(uint16_t tag) {
 
     // move windows to their original workspace
     for (auto& w : this->borrowedTags[tag]) {
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", borrowedWorkspaceId, (uintptr_t)w));
+        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", borrowedWorkspaceId, (uintptr_t)w.get()));
     }
     // clear the borrowed information for the tag
     this->borrowedTags.erase(tag);
@@ -95,10 +95,10 @@ void TagsMonitor::moveCurrentWindowToTag(uint16_t tag) {
         return;
     }
 
-    PHLWORKSPACE            currentWorkspace = getActiveWorkspace();
-    Desktop::View::CWindow* activeWindow     = currentWorkspace->getLastFocusedWindow().get();
+    PHLWORKSPACE currentWorkspace = getActiveWorkspace();
+    PHLWINDOW    activeWindow     = currentWorkspace->getLastFocusedWindow();
 
-    if (activeWindow == nullptr) {
+    if (!activeWindow) {
         // no window, do nothing
         return;
     }
@@ -115,7 +115,7 @@ void TagsMonitor::moveCurrentWindowToTag(uint16_t tag) {
     } else {
         // otherwise, it belonged to the current main workspace
         // just move it
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", this->getWorkspaceId(tag), (uintptr_t)activeWindow));
+        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", this->getWorkspaceId(tag), (uintptr_t)activeWindow.get()));
     }
 }
 
@@ -138,8 +138,8 @@ bool TagsMonitor::isOnlyTag(uint16_t tag) const {
     return tags == TAG2BIT(tag);
 }
 
-void TagsMonitor::unregisterWindow(Desktop::View::CWindow* window) {
-    if (window == nullptr) {
+void TagsMonitor::unregisterWindow(PHLWINDOW window) {
+    if (!window) {
         return;
     }
 
@@ -149,8 +149,8 @@ void TagsMonitor::unregisterWindow(Desktop::View::CWindow* window) {
 }
 
 void TagsMonitor::unregisterCurrentWindow() {
-    PHLWORKSPACE            currentWorkspace = getActiveWorkspace();
-    Desktop::View::CWindow* activeWindow     = currentWorkspace->getLastFocusedWindow().get();
+    PHLWORKSPACE currentWorkspace = getActiveWorkspace();
+    PHLWINDOW    activeWindow     = currentWorkspace->getLastFocusedWindow();
 
     this->unregisterWindow(activeWindow);
 }
@@ -159,8 +159,8 @@ bool TagsMonitor::isValidTag(uint16_t tag) {
     return 1 <= tag && tag <= 9;
 }
 
-std::unordered_map<uint16_t, std::unordered_set<Desktop::View::CWindow*>> TagsMonitor::getAllWindows() const {
-    std::unordered_map<uint16_t, std::unordered_set<Desktop::View::CWindow*>> result;
+std::unordered_map<uint16_t, std::unordered_set<PHLWINDOW>> TagsMonitor::getAllWindows() const {
+    std::unordered_map<uint16_t, std::unordered_set<PHLWINDOW>> result;
 
     for (uint16_t tag = 1; tag <= 9; ++tag) {
         auto windows = getWindowsOnWorkspace(this->getWorkspaceId(tag));

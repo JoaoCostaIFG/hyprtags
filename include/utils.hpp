@@ -36,7 +36,7 @@ static inline PHLWORKSPACE getActiveWorkspace() {
     return monitor->m_activeWorkspace;
 }
 
-std::unordered_set<Desktop::View::CWindow*> getWindowsOnWorkspace(const uint32_t workspaceId);
+std::unordered_set<PHLWINDOW> getWindowsOnWorkspace(const uint32_t workspaceId);
 
 /**
  * @brief Parse a string to a valid tag number (1-9) without throwing exceptions.
