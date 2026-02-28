@@ -326,19 +326,21 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     static auto        P5 = Event::bus()->m_events.window.moveToWorkspace.listen([&](PHLWINDOW w, PHLWORKSPACE ws) { onMoveWindow(w, ws); });
 
     // Focus main screen, if configured
-    const auto   MAIN_DISPLAY_STR = std::string{*MAIN_DISPLAY};
-    TagsMonitor* mainMonitor      = nullptr;
-    for (auto& monitor : g_pCompositor->m_monitors) {
-        TagsMonitor* tagsMonitor = g_tagsMonitors[monitor->m_id];
-        if (monitor->m_name == MAIN_DISPLAY_STR) {
-            mainMonitor = tagsMonitor;
-            break;
+    const auto MAIN_DISPLAY_STR = std::string{*MAIN_DISPLAY};
+    if (!MAIN_DISPLAY_STR.empty()) {
+        TagsMonitor* mainMonitor = nullptr;
+        for (auto& monitor : g_pCompositor->m_monitors) {
+            TagsMonitor* tagsMonitor = g_tagsMonitors[monitor->m_id];
+            if (monitor->m_name == MAIN_DISPLAY_STR) {
+                mainMonitor = tagsMonitor;
+                break;
+            }
         }
-    }
-    if (mainMonitor) {
-        mainMonitor->gotoTag(1);
-    } else {
-        Log::logger->log(Log::WARN, HYPRTAGS ": Failed to find configured main display");
+        if (mainMonitor) {
+            mainMonitor->gotoTag(1);
+        } else {
+            Log::logger->log(Log::WARN, HYPRTAGS ": Failed to find configured main display '{}'", MAIN_DISPLAY_STR);
+        }
     }
 
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Initialized successfully!", CHyprColor{0.2, 1.0, 0.2, 1.0}, 5000);
