@@ -12,6 +12,8 @@
 
 #define WLR_USE_UNSTABLE
 
+#include <cstdlib>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <unistd.h>
@@ -39,6 +41,9 @@
 
 // Each monitor has a set of active tags: monitorID -> listOfTags
 static std::unordered_map<size_t, TagsMonitor*> g_tagsMonitors;
+
+// Path to the generated workspace rules config file
+static std::string g_workspaceRulesPath;
 
 /**
  * @brief Safely get the TagsMonitor for the current monitor.
@@ -252,10 +257,24 @@ static void onMoveWindow(PHLWINDOW window, PHLWORKSPACE workspace) {
 /**
  * Initialize the monitors.
  * Create a config file to source workspace rules.
+ * File is created at $XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprtags.conf
  */
 static bool generateWorkspaceRulesFile(void) {
-    std::ofstream file("/tmp/hyprtags.conf");
+    // Build the config file path
+    const char* xdgRuntimeDir = std::getenv("XDG_RUNTIME_DIR");
+    const char* instanceSig   = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
+
+    if (!xdgRuntimeDir || !instanceSig) {
+        Log::logger->log(Log::WARN, HYPRTAGS ": Missing XDG_RUNTIME_DIR or HYPRLAND_INSTANCE_SIGNATURE");
+        return false;
+    }
+
+    std::filesystem::path configDir = std::filesystem::path(xdgRuntimeDir) / "hypr" / instanceSig;
+    g_workspaceRulesPath            = (configDir / "hyprtags.conf").string();
+
+    std::ofstream file(g_workspaceRulesPath);
     if (!file.is_open()) {
+        Log::logger->log(Log::WARN, HYPRTAGS ": Failed to open config file '{}'", g_workspaceRulesPath);
         return false;
     }
 
@@ -349,6 +368,15 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
 APICALL EXPORT void PLUGIN_EXIT() {
     HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Unloaded!", CHyprColor{0.2, 1.0, 0.2, 1.0}, 5000);
+
+    // Clean up the generated config file
+    if (!g_workspaceRulesPath.empty()) {
+        std::error_code ec;
+        if (std::filesystem::remove(g_workspaceRulesPath, ec)) {
+            Log::logger->log(Log::DEBUG, HYPRTAGS ": Removed config file '{}'", g_workspaceRulesPath);
+        }
+        g_workspaceRulesPath.clear();
+    }
 
     for (auto& [id, monitor] : g_tagsMonitors) {
         delete monitor;

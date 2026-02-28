@@ -35,8 +35,10 @@ You can also use `hyprpm` as shown above to download and build the plugin and th
 Source the plugin generated config by adding the following line to your `hyprland.conf`:
 
 ```ini
-source = /tmp/hyprtags.conf
+source = $XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprtags.conf
 ```
+
+This config file is automatically created when the plugin loads and cleaned up when unloaded.
 
 Afterwards, change the default dispatchers for dealing with windows and workspaces to the new replacements:
 
