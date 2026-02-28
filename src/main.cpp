@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <memory>
 #include <unistd.h>
 #include <unordered_map>
 #include <string>
@@ -40,7 +41,7 @@
 #include "../include/TagsMonitor.hpp"
 
 // Each monitor has a set of active tags: monitorID -> listOfTags
-static std::unordered_map<size_t, TagsMonitor*> g_tagsMonitors;
+static std::unordered_map<size_t, std::unique_ptr<TagsMonitor>> g_tagsMonitors;
 
 // Path to the generated workspace rules config file
 static std::string g_workspaceRulesPath;
@@ -61,7 +62,7 @@ static TagsMonitor* getCurrentTagMonitor() {
         return nullptr;
     }
 
-    return it->second;
+    return it->second.get();
 }
 
 // Do NOT change this function.
@@ -193,7 +194,7 @@ static void onWorkspace(PHLWORKSPACE workspace) {
     if (it == g_tagsMonitors.end()) {
         return;
     }
-    auto tagMon = it->second;
+    auto* tagMon = it->second.get();
 
     // if the workspace is the current one, it means we were the ones that triggered the change, so do nothing
     if (tagMon->isOnlyTag(*tag)) {
@@ -228,8 +229,7 @@ static void onMonitorAdded(PHLMONITOR monitor) {
         return;
     }
     // add new obj
-    TagsMonitor* tagsMonitor  = new TagsMonitor(monitorId);
-    g_tagsMonitors[monitorId] = tagsMonitor;
+    g_tagsMonitors[monitorId] = std::make_unique<TagsMonitor>(monitorId);
 }
 
 static void onMonitorRemoved(PHLMONITOR monitor) {
@@ -243,13 +243,13 @@ static void onMonitorRemoved(PHLMONITOR monitor) {
         return;
     }
 
-    TagsMonitor* removedTagsMon = it->second;
+    TagsMonitor* removedTagsMon = it->second.get();
 
     // Find another monitor to migrate windows to
     TagsMonitor* targetTagsMon = nullptr;
     for (auto& [id, tagMon] : g_tagsMonitors) {
         if (id != monitorId) {
-            targetTagsMon = tagMon;
+            targetTagsMon = tagMon.get();
             break;
         }
     }
@@ -268,8 +268,7 @@ static void onMonitorRemoved(PHLMONITOR monitor) {
         Log::logger->log(Log::WARN, HYPRTAGS ": No other monitor available to migrate windows to");
     }
 
-    // Clean up the removed monitor
-    delete removedTagsMon;
+    // Clean up the removed monitor (unique_ptr handles deletion on erase)
     g_tagsMonitors.erase(monitorId);
 }
 
@@ -305,10 +304,8 @@ static bool generateWorkspaceRulesFile(void) {
         return false;
     }
 
-    for (const auto& pair : g_tagsMonitors) {
-        auto id          = pair.first;
+    for (const auto& [id, monitor] : g_tagsMonitors) {
         auto monitorName = g_pCompositor->getMonitorFromID(id)->m_name;
-        auto monitor     = pair.second;
 
         if (!monitor) {
             continue;
@@ -351,8 +348,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     // At the start only the first tag is active
     for (auto& monitor : g_pCompositor->m_monitors) {
-        TagsMonitor* tagsMonitor      = new TagsMonitor(monitor->m_id);
-        g_tagsMonitors[monitor->m_id] = tagsMonitor;
+        g_tagsMonitors[monitor->m_id] = std::make_unique<TagsMonitor>(monitor->m_id);
     }
     if (!generateWorkspaceRulesFile()) {
         Log::logger->log(Log::WARN, HYPRTAGS ": Failed to write workspace rules");
@@ -376,7 +372,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     if (!MAIN_DISPLAY_STR.empty()) {
         TagsMonitor* mainMonitor = nullptr;
         for (auto& monitor : g_pCompositor->m_monitors) {
-            TagsMonitor* tagsMonitor = g_tagsMonitors[monitor->m_id];
+            TagsMonitor* tagsMonitor = g_tagsMonitors[monitor->m_id].get();
             if (monitor->m_name == MAIN_DISPLAY_STR) {
                 mainMonitor = tagsMonitor;
                 break;
@@ -405,8 +401,5 @@ APICALL EXPORT void PLUGIN_EXIT() {
         g_workspaceRulesPath.clear();
     }
 
-    for (auto& [id, monitor] : g_tagsMonitors) {
-        delete monitor;
-    }
     g_tagsMonitors.clear();
 }
