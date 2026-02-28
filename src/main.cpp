@@ -30,6 +30,7 @@
 #include <hyprland/src/helpers/Monitor.hpp>
 #include <hyprland/src/desktop/DesktopTypes.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
+#include <hyprland/src/event/EventBus.hpp>
 #undef private
 
 #include "../include/globals.hpp"
@@ -163,8 +164,7 @@ static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
  *
  * @param workspace The workspace that changed
  */
-static void onWorkspace(void* self, std::any data) {
-    const auto workspace = std::any_cast<PHLWORKSPACE>(data);
+static void onWorkspace(PHLWORKSPACE workspace) {
     Log::logger->log(Log::DEBUG, HYPRTAGS ": onWorkspace {}", workspace->m_name);
 
     // if the workspace is special, do nothing (we don't manage special workspaces)
@@ -191,21 +191,22 @@ static void onWorkspace(void* self, std::any data) {
     tagMon->gotoTag(*tag);
 }
 
-static void onCloseWindow(void* self, std::any data) {
-    // data is guaranteed
-    const auto PWINDOW = std::any_cast<PHLWINDOW>(data);
+static void onCloseWindow(PHLWINDOW window) {
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": onCloseWindow {}", (uintptr_t)(window.get()));
 
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": onCloseWindow {}", (uintptr_t)(PWINDOW.get()));
+    auto tagMon = getCurrentTagMonitor();
+    if (!tagMon) {
+        return;
+    }
+    tagMon->unregisterWindow(window.get());
 
     // Unregister from all monitors to avoid dangling pointers in borrowedTags
     for (auto& [id, tagMon] : g_tagsMonitors) {
-        tagMon->unregisterWindow(PWINDOW.get());
+        tagMon->unregisterWindow(window.get());
     }
 }
 
-static void onMonitorAdded(void* self, std::any data) {
-    // data is guaranteed
-    const auto monitor   = std::any_cast<PHLMONITOR>(data);
+static void onMonitorAdded(PHLMONITOR monitor) {
     const auto monitorId = monitor->m_id;
 
     Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorAdded {}", monitorId);
@@ -219,9 +220,7 @@ static void onMonitorAdded(void* self, std::any data) {
     g_tagsMonitors[monitorId] = tagsMonitor;
 }
 
-static void onMonitorRemoved(void* self, std::any data) {
-    // data is guaranteed
-    const auto monitor   = std::any_cast<PHLMONITOR>(data);
+static void onMonitorRemoved(PHLMONITOR monitor) {
     const auto monitorId = monitor->m_id;
 
     Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorRemoved {}", monitorId);
@@ -233,6 +232,14 @@ static void onMonitorRemoved(void* self, std::any data) {
     // remove monitor
     delete g_tagsMonitors[monitorId];
     g_tagsMonitors.erase(monitorId);
+}
+
+static void onMoveWindow(PHLWINDOW window, PHLWORKSPACE workspace) {
+    if (window == nullptr || workspace == nullptr) {
+        return;
+    }
+
+    Log::logger->log(Log::DEBUG, HYPRTAGS ": onMoveWindow window 0x{:x} to workspace {}", (uintptr_t)(window.get()), workspace->m_id);
 }
 
 /**
@@ -301,10 +308,11 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 
     static auto* const MAIN_DISPLAY = (Hyprlang::STRING const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprtags:main_display")->getDataStaticPtr();
 
-    static auto        P1 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "workspace", [&](void* self, SCallbackInfo& info, std::any data) { onWorkspace(self, data); });
-    static auto        P2 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "closeWindow", [&](void* self, SCallbackInfo& info, std::any data) { onCloseWindow(self, data); });
-    static auto        P3 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "monitorAdded", [&](void* self, SCallbackInfo& info, std::any data) { onMonitorAdded(self, data); });
-    static auto P4 = HyprlandAPI::registerCallbackDynamic(PHANDLE, "preMonitorRemoved", [&](void* self, SCallbackInfo& info, std::any data) { onMonitorRemoved(self, data); });
+    static auto        P1 = Event::bus()->m_events.workspace.active.listen([&](PHLWORKSPACE w) { onWorkspace(w); });
+    static auto        P2 = Event::bus()->m_events.window.close.listen([&](PHLWINDOW w) { onCloseWindow(w); });
+    static auto        P3 = Event::bus()->m_events.monitor.added.listen([&](PHLMONITOR m) { onMonitorAdded(m); });
+    static auto        P4 = Event::bus()->m_events.monitor.preRemoved.listen([&](PHLMONITOR m) { onMonitorRemoved(m); });
+    static auto        P5 = Event::bus()->m_events.window.moveToWorkspace.listen([&](PHLWINDOW w, PHLWORKSPACE ws) { onMoveWindow(w, ws); });
 
     // Focus main screen, if configured
     const auto   MAIN_DISPLAY_STR = std::string{*MAIN_DISPLAY};
