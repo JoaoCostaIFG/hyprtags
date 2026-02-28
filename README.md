@@ -90,7 +90,7 @@ The plugin reloads your configuration after loading, so you can see a message fl
 
 I'm happy with the plugin for now, but there are some limitations/issues:
 
-- Haven't tested disconnecting/connecting monitors. Probably will need to work on that
+- ~Haven't tested disconnecting/connecting monitors. Probably will need to work on that~
 - Moving windows between monitors might cause some issues if the window is borrowed.
 - Manually dragging floating windows to other monitors/workspaces can cause issues.
 - The order of the windows can change when they go back to their original workspace.

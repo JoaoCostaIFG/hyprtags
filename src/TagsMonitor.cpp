@@ -158,3 +158,16 @@ void TagsMonitor::unregisterCurrentWindow() {
 bool TagsMonitor::isValidTag(uint16_t tag) {
     return 1 <= tag && tag <= 9;
 }
+
+std::unordered_map<uint16_t, std::unordered_set<Desktop::View::CWindow*>> TagsMonitor::getAllWindows() const {
+    std::unordered_map<uint16_t, std::unordered_set<Desktop::View::CWindow*>> result;
+
+    for (uint16_t tag = 1; tag <= 9; ++tag) {
+        auto windows = getWindowsOnWorkspace(this->getWorkspaceId(tag));
+        if (!windows.empty()) {
+            result[tag] = std::move(windows);
+        }
+    }
+
+    return result;
+}

@@ -35,11 +35,18 @@ class TagsMonitor {
     /* garantees that the current window is not registered as borrowed by anyone.
      * This is useful when the window is moved to a special workspace
      */
-    void        unregisterCurrentWindow();
+    void     unregisterCurrentWindow();
 
-    uint64_t    getWorkspaceId(uint16_t tag) const;
+    uint64_t getWorkspaceId(uint16_t tag) const;
 
-    static bool isValidTag(uint16_t tag);
+    /**
+     * @brief Get all windows on all workspaces belonging to this monitor.
+     *
+     * @return Map of tag -> set of windows on that tag's workspace
+     */
+    std::unordered_map<uint16_t, std::unordered_set<Desktop::View::CWindow*>> getAllWindows() const;
+
+    static bool                                                               isValidTag(uint16_t tag);
 
   private:
     uint64_t                                                                  monitorId;

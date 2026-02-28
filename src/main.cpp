@@ -237,12 +237,39 @@ static void onMonitorRemoved(PHLMONITOR monitor) {
 
     Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorRemoved {}", monitorId);
 
-    if (g_tagsMonitors.find(monitorId) == g_tagsMonitors.end()) {
+    auto it = g_tagsMonitors.find(monitorId);
+    if (it == g_tagsMonitors.end()) {
         Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorRemoved {} monitor not registered", monitorId);
         return;
     }
-    // remove monitor
-    delete g_tagsMonitors[monitorId];
+
+    TagsMonitor* removedTagsMon = it->second;
+
+    // Find another monitor to migrate windows to
+    TagsMonitor* targetTagsMon = nullptr;
+    for (auto& [id, tagMon] : g_tagsMonitors) {
+        if (id != monitorId) {
+            targetTagsMon = tagMon;
+            break;
+        }
+    }
+
+    if (targetTagsMon) {
+        // Get all windows from the removed monitor and migrate them
+        auto allWindows = removedTagsMon->getAllWindows();
+        for (auto& [tag, windows] : allWindows) {
+            uint64_t targetWorkspaceId = targetTagsMon->getWorkspaceId(tag);
+            for (auto* window : windows) {
+                Log::logger->log(Log::DEBUG, HYPRTAGS ": Migrating window 0x{:x} to workspace {}", (uintptr_t)window, targetWorkspaceId);
+                HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", targetWorkspaceId, (uintptr_t)window));
+            }
+        }
+    } else {
+        Log::logger->log(Log::WARN, HYPRTAGS ": No other monitor available to migrate windows to");
+    }
+
+    // Clean up the removed monitor
+    delete removedTagsMon;
     g_tagsMonitors.erase(monitorId);
 }
 
