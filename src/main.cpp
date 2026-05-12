@@ -26,7 +26,6 @@
 #include <hyprland/src/includes.hpp>
 
 #define private public
-#include <hyprland/src/config/ConfigManager.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/desktop/Workspace.hpp>
 #include <hyprland/src/render/Renderer.hpp>
@@ -336,7 +335,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     }
 
     /* Config */
-    HyprlandAPI::addConfigValue(PHANDLE, "plugin:hyprtags:main_display", STRVAL_EMPTY);
+    mainDisplayConfig = makeShared<Config::Values::CStringValue>("plugin:hyprtags:main_display", "Main display name", "");
+    HyprlandAPI::addConfigValueV2(PHANDLE, mainDisplayConfig);
 
     /* Dispatchers */
     bool success = true;
@@ -355,20 +355,17 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     }
 
     // so keybinds work and the errors disappear
-    // HyprlandAPI::reloadConfig();
-    // skipping api to get instant reload
-    g_pConfigManager->reload();
+    HyprlandAPI::reloadConfig();
 
-    static auto* const MAIN_DISPLAY = (Hyprlang::STRING const*)HyprlandAPI::getConfigValue(PHANDLE, "plugin:hyprtags:main_display")->getDataStaticPtr();
+    const auto  MAIN_DISPLAY_STR = std::string{mainDisplayConfig->value()};
 
-    static auto        P1 = Event::bus()->m_events.workspace.active.listen([&](PHLWORKSPACE w) { onWorkspace(w); });
-    static auto        P2 = Event::bus()->m_events.window.close.listen([&](PHLWINDOW w) { onCloseWindow(w); });
-    static auto        P3 = Event::bus()->m_events.monitor.added.listen([&](PHLMONITOR m) { onMonitorAdded(m); });
-    static auto        P4 = Event::bus()->m_events.monitor.preRemoved.listen([&](PHLMONITOR m) { onMonitorRemoved(m); });
-    static auto        P5 = Event::bus()->m_events.window.moveToWorkspace.listen([&](PHLWINDOW w, PHLWORKSPACE ws) { onMoveWindow(w, ws); });
+    static auto P1 = Event::bus()->m_events.workspace.active.listen([&](PHLWORKSPACE w) { onWorkspace(w); });
+    static auto P2 = Event::bus()->m_events.window.close.listen([&](PHLWINDOW w) { onCloseWindow(w); });
+    static auto P3 = Event::bus()->m_events.monitor.added.listen([&](PHLMONITOR m) { onMonitorAdded(m); });
+    static auto P4 = Event::bus()->m_events.monitor.preRemoved.listen([&](PHLMONITOR m) { onMonitorRemoved(m); });
+    static auto P5 = Event::bus()->m_events.window.moveToWorkspace.listen([&](PHLWINDOW w, PHLWORKSPACE ws) { onMoveWindow(w, ws); });
 
     // Focus main screen, if configured
-    const auto MAIN_DISPLAY_STR = std::string{*MAIN_DISPLAY};
     if (!MAIN_DISPLAY_STR.empty()) {
         TagsMonitor* mainMonitor = nullptr;
         for (auto& monitor : g_pCompositor->m_monitors) {
