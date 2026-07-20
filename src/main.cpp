@@ -117,7 +117,10 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
         // by anyone before moving it.
         Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspacesilent {} is a special workspace", workspace);
         tagMon->unregisterCurrentWindow();
-        HyprlandAPI::invokeHyprctlCommand("dispatch", "movetoworkspacesilent " + workspace);
+        auto r = runDispatcher("movetoworkspacesilent", workspace);
+        if (!r.success) {
+            return r;
+        }
         return SDispatchResult{};
     }
 
@@ -303,7 +306,7 @@ static void onMonitorRemoved(PHLMONITOR monitor) {
             uint64_t targetWorkspaceId = targetTagsMon->getWorkspaceId(tag);
             for (auto& window : windows) {
                 Log::logger->log(Log::DEBUG, HYPRTAGS ": Migrating window 0x{:x} to workspace {}", (uintptr_t)window.get(), targetWorkspaceId);
-                HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", targetWorkspaceId, (uintptr_t)window.get()));
+                runDispatcher("movetoworkspacesilent", std::format("{},address:0x{:x}", targetWorkspaceId, (uintptr_t)window.get()));
             }
         }
     } else {

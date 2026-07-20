@@ -12,6 +12,7 @@
 #include <hyprland/src/includes.hpp>
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/managers/input/InputManager.hpp>
+#include <hyprland/src/managers/KeybindManager.hpp>
 #include <hyprland/src/state/MonitorState.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
 
@@ -46,6 +47,12 @@ static inline PHLWORKSPACE getActiveWorkspace() {
 }
 
 std::unordered_set<PHLWINDOW> getWindowsOnWorkspace(const uint32_t workspaceId);
+
+// Invoke a Hyprland built-in dispatcher in-process by name (e.g. "workspace", "movetoworkspacesilent").
+// Replaces HyprlandAPI::invokeHyprctlCommand("dispatch", ...) which uses the legacy `hyprctl dispatch`
+// subprocess form that is broken under Lua configs.
+// Returns the dispatcher's SDispatchResult (default-constructed = success if dispatcher not found).
+SDispatchResult runDispatcher(const std::string& name, const std::string& args);
 
 /**
  * @brief Parse a string to a valid tag number (1-9) without throwing exceptions.

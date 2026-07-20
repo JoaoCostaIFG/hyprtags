@@ -28,7 +28,7 @@ void TagsMonitor::gotoTag(uint16_t tag) {
     this->histMainTag = this->mainTag;
     this->tags        = TAG2BIT(tag);
     this->mainTag     = tag;
-    HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("workspace {}", this->getWorkspaceId(tag)));
+    runDispatcher("workspace", std::format("{}", this->getWorkspaceId(tag)));
 }
 
 bool TagsMonitor::activateTag(uint16_t tag) {
@@ -48,7 +48,7 @@ bool TagsMonitor::activateTag(uint16_t tag) {
     this->borrowedTags[tag] = borrowedWindows;
     // move them over to our main workspace
     for (auto& w : borrowedWindows) {
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", currentWorkspace->m_id, (uintptr_t)w.get()));
+        runDispatcher("movetoworkspacesilent", std::format("{},address:0x{:x}", currentWorkspace->m_id, (uintptr_t)w.get()));
     }
 
     tags |= TAG2BIT(tag);
@@ -69,7 +69,7 @@ bool TagsMonitor::deactivateTag(uint16_t tag) {
 
     // move windows to their original workspace
     for (auto& w : this->borrowedTags[tag]) {
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", borrowedWorkspaceId, (uintptr_t)w.get()));
+        runDispatcher("movetoworkspacesilent", std::format("{},address:0x{:x}", borrowedWorkspaceId, (uintptr_t)w.get()));
     }
     // clear the borrowed information for the tag
     this->borrowedTags.erase(tag);
@@ -115,7 +115,7 @@ void TagsMonitor::moveCurrentWindowToTag(uint16_t tag) {
     } else {
         // otherwise, it belonged to the current main workspace
         // just move it
-        HyprlandAPI::invokeHyprctlCommand("dispatch", std::format("movetoworkspacesilent {},address:0x{:x}", this->getWorkspaceId(tag), (uintptr_t)activeWindow.get()));
+        runDispatcher("movetoworkspacesilent", std::format("{},address:0x{:x}", this->getWorkspaceId(tag), (uintptr_t)activeWindow.get()));
     }
 }
 
