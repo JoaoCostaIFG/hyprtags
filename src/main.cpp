@@ -24,12 +24,13 @@
 
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/includes.hpp>
+#include <hyprland/src/state/MonitorState.hpp>
 
 #define private public
 #include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/desktop/Workspace.hpp>
 #include <hyprland/src/render/Renderer.hpp>
-#include <hyprland/src/helpers/Monitor.hpp>
+#include <hyprland/src/output/Monitor.hpp>
 #include <hyprland/src/desktop/DesktopTypes.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/event/EventBus.hpp>
@@ -282,7 +283,7 @@ static void onMoveWindow(PHLWINDOW window, PHLWORKSPACE workspace) {
 /**
  * Initialize the monitors.
  * Create a config file to source workspace rules.
- * File is created at $XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprtags.conf
+ * File is created at $XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprtags.lua
  */
 static bool generateWorkspaceRulesFile(void) {
     // Build the config file path
@@ -295,7 +296,7 @@ static bool generateWorkspaceRulesFile(void) {
     }
 
     std::filesystem::path configDir = std::filesystem::path(xdgRuntimeDir) / "hypr" / instanceSig;
-    g_workspaceRulesPath            = (configDir / "hyprtags.conf").string();
+    g_workspaceRulesPath            = (configDir / "hyprtags.lua").string();
 
     std::ofstream file(g_workspaceRulesPath);
     if (!file.is_open()) {
@@ -304,15 +305,21 @@ static bool generateWorkspaceRulesFile(void) {
     }
 
     for (const auto& [id, monitor] : g_tagsMonitors) {
-        auto monitorName = g_pCompositor->getMonitorFromID(id)->m_name;
+        auto monitorObj = State::monitorState()->query().id(id).run();
+        if (!monitorObj) {
+            Log::logger->log(Log::WARN, HYPRTAGS ": monitor {} not found while generating workspace rules", id);
+            continue;
+        }
+        auto monitorName = monitorObj->m_name;
 
         if (!monitor) {
             continue;
         }
 
-        file << std::format("# monitor {}", monitorName) << std::endl;
+        file << std::format("-- monitor {}", monitorName) << std::endl;
         for (uint32_t i = 1; i < 10; ++i) {
-            file << std::format("workspace = {}, defaultName:{}, monitor:{}, persistent:true{}", monitor->getWorkspaceId(i), i, monitorName, ((i == 1) ? ", default:true" : ""))
+            file << std::format("hl.workspace_rule({{ workspace = \"{}\", default_name = \"{}\", monitor = \"{}\", persistent = true{} }})", monitor->getWorkspaceId(i), i,
+                                monitorName, ((i == 1) ? ", default = true" : ""))
                  << std::endl;
         }
         file << std::endl;
@@ -347,7 +354,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-toggleworkspace", ::tagsToggleworkspace);
 
     // At the start only the first tag is active
-    for (auto& monitor : g_pCompositor->m_monitors) {
+    for (auto& monitor : State::monitorState()->monitors()) {
         g_tagsMonitors[monitor->m_id] = std::make_unique<TagsMonitor>(monitor->m_id);
     }
     if (!generateWorkspaceRulesFile()) {
@@ -368,7 +375,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     // Focus main screen, if configured
     if (!MAIN_DISPLAY_STR.empty()) {
         TagsMonitor* mainMonitor = nullptr;
-        for (auto& monitor : g_pCompositor->m_monitors) {
+        for (auto& monitor : State::monitorState()->monitors()) {
             TagsMonitor* tagsMonitor = g_tagsMonitors[monitor->m_id].get();
             if (monitor->m_name == MAIN_DISPLAY_STR) {
                 mainMonitor = tagsMonitor;

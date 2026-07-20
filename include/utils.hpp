@@ -10,11 +10,13 @@
 #define WLR_USE_UNSTABLE
 
 #include <hyprland/src/includes.hpp>
-
 #include <hyprland/src/Compositor.hpp>
+#include <hyprland/src/managers/input/InputManager.hpp>
+#include <hyprland/src/state/MonitorState.hpp>
+#include <hyprland/src/desktop/state/WindowState.hpp>
 
 #define private public
-#include <hyprland/src/helpers/Monitor.hpp>
+#include <hyprland/src/output/Monitor.hpp>
 #include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/desktop/DesktopTypes.hpp>
@@ -22,14 +24,21 @@
 
 #define HYPRTAGS "[hyprtags]"
 
-#define GET_CURRENT_MONITOR()         g_pCompositor->getMonitorFromCursor()
+// Returns the monitor the cursor is currently on, or nullptr if none.
+static inline PHLMONITOR getCurrentMonitor() {
+    return State::monitorState()->query().vec(g_pInputManager->getMouseCoordsInternal()).run();
+}
+
+#define GET_CURRENT_MONITOR()         getCurrentMonitor()
 #define GET_ACTIVE_WORKSPACE()        GET_CURRENT_MONITOR()->m_activeWorkspace
-#define GET_ACTIVE_SPECIALWORKSPACE() GET_CURRENT_MONITOR()->activeSpecialWorkspace
-#define GET_LAST_WINDOW()             g_pCompositor->m_pLastWindow
+#define GET_ACTIVE_SPECIALWORKSPACE() GET_CURRENT_MONITOR()->m_activeSpecialWorkspace
 
 // Returns the current active special workspace (if any) or the active 'normal' workspace
 static inline PHLWORKSPACE getActiveWorkspace() {
     auto monitor = GET_CURRENT_MONITOR();
+    if (!monitor) {
+        return nullptr;
+    }
     if (monitor->m_activeSpecialWorkspace != nullptr) {
         return monitor->m_activeSpecialWorkspace;
     }
