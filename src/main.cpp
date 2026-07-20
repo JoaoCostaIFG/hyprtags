@@ -12,19 +12,22 @@
 
 #define WLR_USE_UNSTABLE
 
+#include <any>
 #include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <memory>
+#include <optional>
+#include <string>
 #include <unistd.h>
 #include <unordered_map>
-#include <string>
-#include <any>
 
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/includes.hpp>
 #include <hyprland/src/state/MonitorState.hpp>
+#include <hyprland/src/config/ConfigManager.hpp>
+#include <hyprland/src/config/lua/bindings/LuaBindingsInternal.hpp>
 
 #define private public
 #include <hyprland/src/desktop/view/Window.hpp>
@@ -164,6 +167,45 @@ static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
 
     return SDispatchResult{};
 }
+
+static std::optional<std::string> luaArgToString(lua_State* L, int idx) {
+    if (lua_isinteger(L, idx) != 0)
+        return std::to_string(lua_tointeger(L, idx));
+    size_t      len = 0;
+    const char* str = lua_tolstring(L, idx, &len);
+    if (str == nullptr)
+        return std::nullopt;
+    return std::string{str, len};
+}
+
+static int pushLuaDispatchResult(lua_State* L, const SDispatchResult& result) {
+    lua_newtable(L);
+    lua_pushboolean(L, static_cast<int>(result.success));
+    lua_setfield(L, -2, "ok");
+    lua_pushboolean(L, static_cast<int>(result.passEvent));
+    lua_setfield(L, -2, "pass_event");
+    if (!result.success) {
+        lua_pushstring(L, result.error.c_str());
+        lua_setfield(L, -2, "error");
+    }
+    return 1;
+}
+
+static int pushLuaArgError(lua_State* L, const std::string& fn) {
+    return pushLuaDispatchResult(L, SDispatchResult{.success = false, .error = fn + " expects a string or integer argument"});
+}
+
+#define LUA_DISPATCH_WRAPPER(luaName, fn)                                                                                                                                          \
+    static int lua_##fn(lua_State* L) {                                                                                                                                            \
+        const auto arg = luaArgToString(L, 1);                                                                                                                                     \
+        return arg ? pushLuaDispatchResult(L, fn(*arg)) : pushLuaArgError(L, luaName);                                                                                             \
+    }
+
+LUA_DISPATCH_WRAPPER("tags_workspace", tagsWorkspace)
+LUA_DISPATCH_WRAPPER("tags_workspace_alt_tab", tagsWorkspacealttab)
+LUA_DISPATCH_WRAPPER("tags_move_to_workspace", tagsMovetoworkspace)
+LUA_DISPATCH_WRAPPER("tags_move_to_workspace_silent", tagsMovetoworkspacesilent)
+LUA_DISPATCH_WRAPPER("tags_toggle_workspace", tagsToggleworkspace)
 
 /**
  * @brief Notification for user-triggered workspace changes that did not go through the plugin.
@@ -346,12 +388,21 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     HyprlandAPI::addConfigValueV2(PHANDLE, mainDisplayConfig);
 
     /* Dispatchers */
+    if (Config::mgr()->type() != Config::CONFIG_LUA) {
+        HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": This plugin now requires a Lua config (hyprland.lua).", CHyprColor{1.0, 0.2, 0.2, 1.0}, 10000);
+        throw std::runtime_error("[hyprtags] Lua config (hyprland.lua) is required; legacy hyprland.conf is no longer supported.");
+    }
+
     bool success = true;
-    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-workspace", ::tagsWorkspace);
-    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-workspacealttab", ::tagsWorkspacealttab);
-    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-movetoworkspacesilent", ::tagsMovetoworkspacesilent);
-    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-movetoworkspace", ::tagsMovetoworkspace);
-    success      = success && HyprlandAPI::addDispatcherV2(PHANDLE, "tags-toggleworkspace", ::tagsToggleworkspace);
+    success      = success && HyprlandAPI::addLuaFunction(PHANDLE, "hyprtags", "tags_workspace", lua_tagsWorkspace);
+    success      = success && HyprlandAPI::addLuaFunction(PHANDLE, "hyprtags", "tags_workspace_alt_tab", lua_tagsWorkspacealttab);
+    success      = success && HyprlandAPI::addLuaFunction(PHANDLE, "hyprtags", "tags_move_to_workspace", lua_tagsMovetoworkspace);
+    success      = success && HyprlandAPI::addLuaFunction(PHANDLE, "hyprtags", "tags_move_to_workspace_silent", lua_tagsMovetoworkspacesilent);
+    success      = success && HyprlandAPI::addLuaFunction(PHANDLE, "hyprtags", "tags_toggle_workspace", lua_tagsToggleworkspace);
+    if (!success) {
+        HyprlandAPI::addNotification(PHANDLE, HYPRTAGS ": Failed to register Lua dispatchers.", CHyprColor{1.0, 0.2, 0.2, 1.0}, 10000);
+        throw std::runtime_error("[hyprtags] failed to register Lua dispatchers");
+    }
 
     // At the start only the first tag is active
     for (auto& monitor : State::monitorState()->monitors()) {

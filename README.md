@@ -20,7 +20,9 @@ hyprpm add "https://github.com/JoaoCostaIFG/hyprtags"
 hyprpm enable hyprtags
 ```
 
-Afterwards, I recommend adding `exec-once = hyprpm reload -n` to your `hyprland.conf`.
+Afterwards, I recommend adding `exec-once = hyprpm reload -n` to your `hyprland.lua`.
+
+> **Note:** Hyprtags now requires a Lua config (`hyprland.lua`). The legacy `hyprland.conf`/hyprlang format is no longer supported because Hyprland's `hyprctl dispatch` does not expose plugin dispatchers (registered via `addDispatcherV2`) under the Lua `hl.dsp` namespace. The plugin therefore exposes its dispatchers as Lua functions under `hl.plugin.hyprtags.*`.
 
 ### Manual
 
@@ -43,51 +45,55 @@ dofile(os.getenv("XDG_RUNTIME_DIR") ..
 
 This config file is automatically created when the plugin loads and cleaned up when unloaded.
 
-Afterwards, change the default dispatchers for dealing with windows and workspaces to the new replacements:
+The plugin exposes its dispatchers as Lua functions under `hl.plugin.hyprtags.*`:
 
-```sh
-#
-# Workspaces:
-#
-# Switch workspaces with mod + [0-9]
-bind = $mod, 1, tags-workspace, 1
-bind = $mod, 2, tags-workspace, 2
-bind = $mod, 3, tags-workspace, 3
-bind = $mod, 4, tags-workspace, 4
-bind = $mod, 5, tags-workspace, 5
-bind = $mod, 6, tags-workspace, 6
-bind = $mod, 7, tags-workspace, 7
-bind = $mod, 8, tags-workspace, 8
-bind = $mod, 9, tags-workspace, 9
-# Move active window to a workspace with mod + SHIFT + [0-9]
-bind = $mod+SHIFT, 1, tags-movetoworkspacesilent, 1
-bind = $mod+SHIFT, 2, tags-movetoworkspacesilent, 2
-bind = $mod+SHIFT, 3, tags-movetoworkspacesilent, 3
-bind = $mod+SHIFT, 4, tags-movetoworkspacesilent, 4
-bind = $mod+SHIFT, 5, tags-movetoworkspacesilent, 5
-bind = $mod+SHIFT, 6, tags-movetoworkspacesilent, 6
-bind = $mod+SHIFT, 7, tags-movetoworkspacesilent, 7
-bind = $mod+SHIFT, 8, tags-movetoworkspacesilent, 8
-bind = $mod+SHIFT, 9, tags-movetoworkspacesilent, 9
-# Borrow workspaces
-bind = $mod+CONTROL, 1, tags-toggleworkspace, 1
-bind = $mod+CONTROL, 2, tags-toggleworkspace, 2
-bind = $mod+CONTROL, 3, tags-toggleworkspace, 3
-bind = $mod+CONTROL, 4, tags-toggleworkspace, 4
-bind = $mod+CONTROL, 5, tags-toggleworkspace, 5
-bind = $mod+CONTROL, 6, tags-toggleworkspace, 6
-bind = $mod+CONTROL, 7, tags-toggleworkspace, 7
-bind = $mod+CONTROL, 8, tags-toggleworkspace, 8
-bind = $mod+CONTROL, 9, tags-toggleworkspace, 9
-# workspace alt-tab
-bind = $mod, TAB, tags-workspacealttab,
+| Function                          | Replaces (legacy)               | Description                                       |
+| --------------------------------- | ------------------------------- | ------------------------------------------------- |
+| `tags_workspace(arg)`             | `tags-workspace`                | Switch to a workspace tag (1-9)                   |
+| `tags_workspace_alt_tab()`         | `tags-workspacealttab`          | Alternate-tag (recall last tag combination)       |
+| `tags_move_to_workspace(arg)`      | `tags-movetoworkspace`          | Move the focused window to a tag, then switch     |
+| `tags_move_to_workspace_silent(arg)` | `tags-movetoworkspacesilent`  | Move the focused window to a tag silently         |
+| `tags_toggle_workspace(arg)`       | `tags-toggleworkspace`          | Toggle (borrow/unborrow) a tag                    |
 
-# Example special workspace (scratchpad)
-bind = $mod, Q, togglespecialworkspace, magic
-bind = $mod+SHIFT, Q, tags-movetoworkspacesilent, special:magic
+Each returns a table `{ ok: boolean, pass_event: boolean, error?: string }`.
+
+### Keybinds
+
+```lua
+local mod = "SUPER"
+
+-- Switch workspaces with mod + [1-9]
+for i = 1, 9 do
+    hl.bind(mod .. "+" .. tostring(i), function() hl.plugin.hyprtags.tags_workspace(tostring(i)) end)
+end
+
+-- Move active window to a workspace with mod + SHIFT + [1-9]
+for i = 1, 9 do
+    hl.bind(mod .. "+SHIFT+" .. tostring(i), function() hl.plugin.hyprtags.tags_move_to_workspace_silent(tostring(i)) end)
+end
+
+-- Borrow workspaces with mod + CTRL + [1-9]
+for i = 1, 9 do
+    hl.bind(mod .. "+CTRL+" .. tostring(i), function() hl.plugin.hyprtags.tags_toggle_workspace(tostring(i)) end)
+end
+
+-- workspace alt-tab
+hl.bind(mod .. "+TAB", function() hl.plugin.hyprtags.tags_workspace_alt_tab() end)
+
+-- Example special workspace (scratchpad)
+hl.bind(mod .. "+Q", function() hl.dispatch(hl.dsp.workspace.toggle_special("magic")) end)
+hl.bind(mod .. "+SHIFT+Q", function() hl.plugin.hyprtags.tags_move_to_workspace_silent("special:magic") end)
 ```
 
-The plugin reloads your configuration after loading, so you can see a message flash telling you that the dispatchers above haven't been found.
+### IPC
+
+To trigger a dispatcher from outside Hyprland (e.g. a script or status bar), use `hyprctl eval`:
+
+```sh
+hyprctl eval 'hl.plugin.hyprtags.tags_workspace("2")'
+```
+
+The legacy `hyprctl dispatch tags-workspace 2` form is no longer supported — `hyprctl dispatch` in Lua configs only resolves built-in dispatchers from `hl.dsp`, not plugin-registered ones.
 
 ## Limitations/TODO
 
