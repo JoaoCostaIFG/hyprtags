@@ -205,10 +205,14 @@ static int pushLuaArgError(lua_State* L, const std::string& fn) {
     }
 
 LUA_DISPATCH_WRAPPER("tags_workspace", tagsWorkspace)
-LUA_DISPATCH_WRAPPER("tags_workspace_alt_tab", tagsWorkspacealttab)
 LUA_DISPATCH_WRAPPER("tags_move_to_workspace", tagsMovetoworkspace)
 LUA_DISPATCH_WRAPPER("tags_move_to_workspace_silent", tagsMovetoworkspacesilent)
 LUA_DISPATCH_WRAPPER("tags_toggle_workspace", tagsToggleworkspace)
+
+// tags_workspace_alt_tab ignores its argument and can be called with none.
+static int lua_tagsWorkspacealttab(lua_State* L) {
+    return pushLuaDispatchResult(L, tagsWorkspacealttab(""));
+}
 
 /**
  * @brief Notification for user-triggered workspace changes that did not go through the plugin.
