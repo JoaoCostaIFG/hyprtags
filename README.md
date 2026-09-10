@@ -107,4 +107,4 @@ I'm happy with the plugin for now, but there are some limitations/issues:
 
 ## License
 
-See the [LICENSE](./LICENSE) file for details.
+Licensed under the European Union Public Licence v. 1.2 (EUPL-1.2).

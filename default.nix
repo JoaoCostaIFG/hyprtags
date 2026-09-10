@@ -12,7 +12,7 @@ hyprlandPlugins.mkHyprlandPlugin {
   meta = with lib; {
     homepage = "https://github.com/JoaoCostaIFG/hyprtags";
     description = "Hyprland version of DWM's tag system";
-    license = licenses.bsd3;
+    license = licenses.eupl12;
     platforms = platforms.linux;
   };
 }

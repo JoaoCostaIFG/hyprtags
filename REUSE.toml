@@ -1,0 +1,7 @@
+version = 1
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024-2026 Joao Costa <me@joaocosta.dev>"
+SPDX-License-Identifier = "EUPL-1.2"
