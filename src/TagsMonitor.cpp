@@ -28,7 +28,7 @@ void TagsMonitor::gotoTag(uint16_t tag) {
     this->histMainTag = this->mainTag;
     this->tags        = TAG2BIT(tag);
     this->mainTag     = tag;
-    runDispatcher("workspace", std::format("{}", this->getWorkspaceId(tag)));
+    changeWorkspace(std::format("{}", this->getWorkspaceId(tag)));
 }
 
 bool TagsMonitor::activateTag(uint16_t tag) {
@@ -44,11 +44,15 @@ bool TagsMonitor::activateTag(uint16_t tag) {
     PHLWORKSPACE                  currentWorkspace = GET_ACTIVE_WORKSPACE();
     std::unordered_set<PHLWINDOW> borrowedWindows  = getWindowsOnWorkspace(this->getWorkspaceId(tag));
 
+    if (!currentWorkspace) {
+        return false;
+    }
+
     // save borrowed windows for this tag
     this->borrowedTags[tag] = borrowedWindows;
     // move them over to our main workspace
     for (auto& w : borrowedWindows) {
-        runDispatcher("movetoworkspacesilent", std::format("{},address:0x{:x}", currentWorkspace->m_id, (uintptr_t)w.get()));
+        moveWindowToWorkspace(currentWorkspace, true, w);
     }
 
     tags |= TAG2BIT(tag);
@@ -69,7 +73,7 @@ bool TagsMonitor::deactivateTag(uint16_t tag) {
 
     // move windows to their original workspace
     for (auto& w : this->borrowedTags[tag]) {
-        runDispatcher("movetoworkspacesilent", std::format("{},address:0x{:x}", borrowedWorkspaceId, (uintptr_t)w.get()));
+        moveWindowToWorkspace(std::format("{}", borrowedWorkspaceId), true, w);
     }
     // clear the borrowed information for the tag
     this->borrowedTags.erase(tag);
@@ -115,7 +119,7 @@ void TagsMonitor::moveCurrentWindowToTag(uint16_t tag) {
     } else {
         // otherwise, it belonged to the current main workspace
         // just move it
-        runDispatcher("movetoworkspacesilent", std::format("{},address:0x{:x}", this->getWorkspaceId(tag), (uintptr_t)activeWindow.get()));
+        moveWindowToWorkspace(std::format("{}", this->getWorkspaceId(tag)), true, activeWindow);
     }
 }
 

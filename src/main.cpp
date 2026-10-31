@@ -30,8 +30,8 @@
 #include <hyprland/src/config/lua/bindings/LuaBindingsInternal.hpp>
 
 #define private public
-#include <hyprland/src/desktop/view/Window.hpp>
-#include <hyprland/src/desktop/Workspace.hpp>
+#include <hyprland/src/desktop/view/window/Window.hpp>
+#include <hyprland/src/workspace/HLWorkspace.hpp>
 #include <hyprland/src/render/Renderer.hpp>
 #include <hyprland/src/output/Monitor.hpp>
 #include <hyprland/src/desktop/DesktopTypes.hpp>
@@ -74,7 +74,7 @@ APICALL EXPORT std::string PLUGIN_API_VERSION() {
 }
 
 static SDispatchResult tagsWorkspace(const std::string& workspace) {
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-workspace {}", workspace);
+    LOG(Log::DEBUG, HYPRTAGS ": tags-workspace {}", workspace);
 
     auto tag = parseTag(workspace);
     if (!tag) {
@@ -92,7 +92,7 @@ static SDispatchResult tagsWorkspace(const std::string& workspace) {
 }
 
 static SDispatchResult tagsWorkspacealttab(const std::string& ignored) {
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-workspacealttab");
+    LOG(Log::DEBUG, HYPRTAGS ": tags-workspacealttab");
 
     auto tagMon = getCurrentTagMonitor();
     if (!tagMon) {
@@ -105,7 +105,7 @@ static SDispatchResult tagsWorkspacealttab(const std::string& ignored) {
 }
 
 static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspacesilent {}", workspace);
+    LOG(Log::DEBUG, HYPRTAGS ": tags-movetoworkspacesilent {}", workspace);
 
     auto tagMon = getCurrentTagMonitor();
     if (!tagMon) {
@@ -115,9 +115,9 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
     if (workspace.rfind("special:", 0) == 0) {
         // special windows in special workspaces are not managed by us. Just need to make sure the window is not borrowed
         // by anyone before moving it.
-        Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspacesilent {} is a special workspace", workspace);
+        LOG(Log::DEBUG, HYPRTAGS ": tags-movetoworkspacesilent {} is a special workspace", workspace);
         tagMon->unregisterCurrentWindow();
-        auto r = runDispatcher("movetoworkspacesilent", workspace);
+        auto r = moveWindowToWorkspace(workspace, true);
         if (!r.success) {
             return r;
         }
@@ -135,7 +135,7 @@ static SDispatchResult tagsMovetoworkspacesilent(const std::string& workspace) {
 }
 
 static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-movetoworkspace {}", workspace);
+    LOG(Log::DEBUG, HYPRTAGS ": tags-movetoworkspace {}", workspace);
 
     auto tag = parseTag(workspace);
     if (!tag) {
@@ -154,7 +154,7 @@ static SDispatchResult tagsMovetoworkspace(const std::string& workspace) {
 }
 
 static SDispatchResult tagsToggleworkspace(const std::string& workspace) {
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": tags-toggleworkspace {}", workspace);
+    LOG(Log::DEBUG, HYPRTAGS ": tags-toggleworkspace {}", workspace);
 
     auto tag = parseTag(workspace);
     if (!tag) {
@@ -220,15 +220,15 @@ static int lua_tagsWorkspacealttab(lua_State* L) {
  * @param workspace The workspace that changed
  */
 static void onWorkspace(PHLWORKSPACE workspace) {
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": onWorkspace {}", workspace->m_name);
+    LOG(Log::DEBUG, HYPRTAGS ": onWorkspace {}", workspace->displayName());
 
     // if the workspace is special, do nothing (we don't manage special workspaces)
-    if (workspace->m_isSpecialWorkspace) {
+    if (workspace->type() == Workspace::eWorkspaceType::SPECIAL) {
         return;
     }
 
     // ignore non-numeric workspace names (named workspaces are not managed by us)
-    auto tag = parseTag(workspace->m_name);
+    auto tag = parseTag(workspace->displayName());
     if (!tag) {
         return;
     }
@@ -254,7 +254,7 @@ static void onWorkspace(PHLWORKSPACE workspace) {
 }
 
 static void onCloseWindow(PHLWINDOW window) {
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": onCloseWindow {}", (uintptr_t)(window.get()));
+    LOG(Log::DEBUG, HYPRTAGS ": onCloseWindow {}", (uintptr_t)(window.get()));
 
     auto tagMon = getCurrentTagMonitor();
     if (!tagMon) {
@@ -271,10 +271,10 @@ static void onCloseWindow(PHLWINDOW window) {
 static void onMonitorAdded(PHLMONITOR monitor) {
     const auto monitorId = monitor->m_id;
 
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorAdded {}", monitorId);
+    LOG(Log::DEBUG, HYPRTAGS ": onMonitorAdded {}", monitorId);
 
     if (g_tagsMonitors.find(monitorId) != g_tagsMonitors.end()) {
-        Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorAdded {} monitor already registered", monitorId);
+        LOG(Log::DEBUG, HYPRTAGS ": onMonitorAdded {} monitor already registered", monitorId);
         return;
     }
     // add new obj
@@ -284,11 +284,11 @@ static void onMonitorAdded(PHLMONITOR monitor) {
 static void onMonitorRemoved(PHLMONITOR monitor) {
     const auto monitorId = monitor->m_id;
 
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorRemoved {}", monitorId);
+    LOG(Log::DEBUG, HYPRTAGS ": onMonitorRemoved {}", monitorId);
 
     auto it = g_tagsMonitors.find(monitorId);
     if (it == g_tagsMonitors.end()) {
-        Log::logger->log(Log::DEBUG, HYPRTAGS ": onMonitorRemoved {} monitor not registered", monitorId);
+        LOG(Log::DEBUG, HYPRTAGS ": onMonitorRemoved {} monitor not registered", monitorId);
         return;
     }
 
@@ -309,12 +309,12 @@ static void onMonitorRemoved(PHLMONITOR monitor) {
         for (auto& [tag, windows] : allWindows) {
             uint64_t targetWorkspaceId = targetTagsMon->getWorkspaceId(tag);
             for (auto& window : windows) {
-                Log::logger->log(Log::DEBUG, HYPRTAGS ": Migrating window 0x{:x} to workspace {}", (uintptr_t)window.get(), targetWorkspaceId);
-                runDispatcher("movetoworkspacesilent", std::format("{},address:0x{:x}", targetWorkspaceId, (uintptr_t)window.get()));
+                LOG(Log::DEBUG, HYPRTAGS ": Migrating window 0x{:x} to workspace {}", (uintptr_t)window.get(), targetWorkspaceId);
+                moveWindowToWorkspace(std::format("{}", targetWorkspaceId), true, window);
             }
         }
     } else {
-        Log::logger->log(Log::WARN, HYPRTAGS ": No other monitor available to migrate windows to");
+        LOG(Log::WARN, HYPRTAGS ": No other monitor available to migrate windows to");
     }
 
     // Clean up the removed monitor (unique_ptr handles deletion on erase)
@@ -326,7 +326,7 @@ static void onMoveWindow(PHLWINDOW window, PHLWORKSPACE workspace) {
         return;
     }
 
-    Log::logger->log(Log::DEBUG, HYPRTAGS ": onMoveWindow window 0x{:x} to workspace {}", (uintptr_t)(window.get()), workspace->m_id);
+    LOG(Log::DEBUG, HYPRTAGS ": onMoveWindow window 0x{:x} to workspace {}", (uintptr_t)(window.get()), workspace->displayName());
 }
 
 /**
@@ -340,7 +340,7 @@ static bool generateWorkspaceRulesFile(void) {
     const char* instanceSig   = std::getenv("HYPRLAND_INSTANCE_SIGNATURE");
 
     if (!xdgRuntimeDir || !instanceSig) {
-        Log::logger->log(Log::WARN, HYPRTAGS ": Missing XDG_RUNTIME_DIR or HYPRLAND_INSTANCE_SIGNATURE");
+        LOG(Log::WARN, HYPRTAGS ": Missing XDG_RUNTIME_DIR or HYPRLAND_INSTANCE_SIGNATURE");
         return false;
     }
 
@@ -349,14 +349,14 @@ static bool generateWorkspaceRulesFile(void) {
 
     std::ofstream file(g_workspaceRulesPath);
     if (!file.is_open()) {
-        Log::logger->log(Log::WARN, HYPRTAGS ": Failed to open config file '{}'", g_workspaceRulesPath);
+        LOG(Log::WARN, HYPRTAGS ": Failed to open config file '{}'", g_workspaceRulesPath);
         return false;
     }
 
     for (const auto& [id, monitor] : g_tagsMonitors) {
         auto monitorObj = State::monitorState()->query().id(id).run();
         if (!monitorObj) {
-            Log::logger->log(Log::WARN, HYPRTAGS ": monitor {} not found while generating workspace rules", id);
+            LOG(Log::WARN, HYPRTAGS ": monitor {} not found while generating workspace rules", id);
             continue;
         }
         auto monitorName = monitorObj->m_name;
@@ -416,7 +416,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         g_tagsMonitors[monitor->m_id] = std::make_unique<TagsMonitor>(monitor->m_id);
     }
     if (!generateWorkspaceRulesFile()) {
-        Log::logger->log(Log::WARN, HYPRTAGS ": Failed to write workspace rules");
+        LOG(Log::WARN, HYPRTAGS ": Failed to write workspace rules");
     }
 
     // so keybinds work and the errors disappear
@@ -443,7 +443,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         if (mainMonitor) {
             mainMonitor->gotoTag(1);
         } else {
-            Log::logger->log(Log::WARN, HYPRTAGS ": Failed to find configured main display '{}'", MAIN_DISPLAY_STR);
+            LOG(Log::WARN, HYPRTAGS ": Failed to find configured main display '{}'", MAIN_DISPLAY_STR);
         }
     }
 
@@ -458,7 +458,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
     if (!g_workspaceRulesPath.empty()) {
         std::error_code ec;
         if (std::filesystem::remove(g_workspaceRulesPath, ec)) {
-            Log::logger->log(Log::DEBUG, HYPRTAGS ": Removed config file '{}'", g_workspaceRulesPath);
+            LOG(Log::DEBUG, HYPRTAGS ": Removed config file '{}'", g_workspaceRulesPath);
         }
         g_workspaceRulesPath.clear();
     }

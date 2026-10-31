@@ -12,13 +12,14 @@
 #include <hyprland/src/includes.hpp>
 #include <hyprland/src/Compositor.hpp>
 #include <hyprland/src/managers/input/InputManager.hpp>
-#include <hyprland/src/managers/KeybindManager.hpp>
 #include <hyprland/src/state/MonitorState.hpp>
 #include <hyprland/src/desktop/state/WindowState.hpp>
+#include <hyprland/src/config/shared/actions/ConfigActions.hpp>
 
 #define private public
 #include <hyprland/src/output/Monitor.hpp>
-#include <hyprland/src/desktop/view/Window.hpp>
+#include <hyprland/src/desktop/view/window/Window.hpp>
+#include <hyprland/src/workspace/HLWorkspace.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
 #include <hyprland/src/desktop/DesktopTypes.hpp>
 #undef private
@@ -48,11 +49,18 @@ static inline PHLWORKSPACE getActiveWorkspace() {
 
 std::unordered_set<PHLWINDOW> getWindowsOnWorkspace(const uint32_t workspaceId);
 
-// Invoke a Hyprland built-in dispatcher in-process by name (e.g. "workspace", "movetoworkspacesilent").
-// Replaces HyprlandAPI::invokeHyprctlCommand("dispatch", ...) which uses the legacy `hyprctl dispatch`
-// subprocess form that is broken under Lua configs.
-// Returns the dispatcher's SDispatchResult (default-constructed = success if dispatcher not found).
-SDispatchResult runDispatcher(const std::string& name, const std::string& args);
+// Switch to a workspace given a workspace selector string (e.g. "3", "special:magic").
+// Creates the workspace if it does not exist yet. Equivalent of the old "workspace" dispatcher.
+// Returns the action result converted to SDispatchResult (default-constructed = success).
+SDispatchResult changeWorkspace(const std::string& ws);
+
+// Move a window (the active window when window is nullopt) to a workspace given by a selector
+// string, creating the workspace if it does not exist yet.
+// silent = true matches the old "movetoworkspacesilent" dispatcher.
+SDispatchResult moveWindowToWorkspace(const std::string& ws, bool silent, std::optional<PHLWINDOW> window = std::nullopt);
+
+// Move a window (the active window when window is nullopt) to an existing workspace object.
+SDispatchResult moveWindowToWorkspace(PHLWORKSPACE ws, bool silent, std::optional<PHLWINDOW> window = std::nullopt);
 
 /**
  * @brief Parse a string to a valid tag number (1-9) without throwing exceptions.
